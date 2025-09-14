@@ -418,6 +418,81 @@ def test_sheet():
             'error': str(e)
         })
 
+# New endpoint for testing Unicode conversion
+@app.route('/api/test-unicode', methods=['POST'])
+def test_unicode():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = request.json
+        test_text = data.get('text', 'à¸à¸²à¸£à¹à¸à¹à¸à¸£à¸²à¸°')
+        
+        original = test_text
+        cleaned = clean_thai_text(test_text)
+        
+        # Test different decoding methods
+        methods = {}
+        
+        try:
+            methods['unicode_escape'] = test_text.encode().decode('unicode_escape')
+        except:
+            methods['unicode_escape'] = 'Failed'
+            
+        try:
+            methods['codecs_decode'] = codecs.decode(test_text, 'unicode_escape')
+        except:
+            methods['codecs_decode'] = 'Failed'
+            
+        try:
+            methods['utf8_decode'] = test_text.encode('latin1').decode('utf-8')
+        except:
+            methods['utf8_decode'] = 'Failed'
+        
+        return jsonify({
+            'original': original,
+            'cleaned': cleaned,
+            'methods': methods,
+            'success': True
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+# New endpoint for testing search functionality
+@app.route('/api/test-search', methods=['POST'])
+def test_search():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = request.json
+        query = data.get('query', '')
+        
+        if not query:
+            return jsonify({'error': 'กรุณาใส่คำค้นหา'})
+        
+        print(f"[DEBUG] Test search for: '{query}'")
+        
+        # Get raw sheet data
+        sheet_data = get_google_sheet_data(app_settings['google_sheet_id'])
+        
+        # Perform search
+        search_result = search_sheet_data(query)
+        
+        return jsonify({
+            'success': True,
+            'query': query,
+            'sheet_rows': len(sheet_data) if sheet_data else 0,
+            'search_result': search_result,
+            'sheet_preview': sheet_data[:3] if sheet_data else [],
+            'sheet_id': app_settings['google_sheet_id']
+        })
+        
+    except Exception as e:
+        print(f"[DEBUG] Test search error: {e}")
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'})
+
 # New endpoint for viewing sheet data
 @app.route('/api/view-sheet', methods=['POST'])
 def view_sheet():
