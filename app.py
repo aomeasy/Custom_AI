@@ -4,6 +4,7 @@ import json
 import os
 from datetime import datetime
 import re
+import codecs
 import csv
 from io import StringIO
 
@@ -27,31 +28,85 @@ app_settings = {
     'telegram_api': ''
 }
 
+
+def clean_thai_text(text):
+    """แปลง Unicode escape sequences กลับเป็นภาษาไทย"""
+    if not text or not isinstance(text, str):
+        return text
+    
+    # ตรวจสอบว่ามี Unicode escape sequences หรือไม่
+    if '\\u' not in text:
+        return text
+    
+    try:
+        # วิธีที่ 1: ใช้ codecs.decode สำหรับ unicode_escape
+        cleaned = codecs.decode(text, 'unicode_escape')
+        return cleaned
+    except:
+        try:
+            # วิธีที่ 2: ใช้ encode/decode method
+            cleaned = text.encode().decode('unicode_escape')
+            return cleaned
+        except:
+            try:
+                # วิธีที่ 3: ใช้ regular expression กับ codecs
+                def decode_match(match):
+                    return chr(int(match.group(1), 16))
+                cleaned = re.sub(r'\\u([0-9a-fA-F]{4})', decode_match, text)
+                return cleaned
+            except:
+                # หากแปลงไม่ได้ทุกวิธี ให้คืนค่าเดิม
+                return text
+                
 def get_google_sheet_data(sheet_id, range_name="A:Z"):
-    """Fetch data from Google Sheets with improved error handling"""
+    """Fetch data from Google Sheets with improved error handling and Thai language support"""
     try:
         # Using public Google Sheets CSV export
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
         print(f"[DEBUG] Fetching Google Sheet: {csv_url}")
         
-        response = requests.get(csv_url, timeout=10)
+        # ปรับปรุง headers เพื่อรองรับ UTF-8
+        headers = {
+            'Accept': 'text/csv; charset=utf-8',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(csv_url, headers=headers, timeout=10)
         print(f"[DEBUG] Google Sheets response status: {response.status_code}")
         
         if response.status_code == 200:
-            print(f"[DEBUG] Raw CSV response length: {len(response.text)} characters")
-            print(f"[DEBUG] CSV preview: {response.text[:200]}...")
+            # ตรวจสอบ encoding ของ response
+            response.encoding = 'utf-8'
+            csv_content = response.text
+            
+            print(f"[DEBUG] Raw CSV response length: {len(csv_content)} characters")
+            print(f"[DEBUG] CSV preview: {csv_content[:200]}...")
             
             # Better CSV parsing using csv module
-            csv_data = StringIO(response.text)
+            csv_data = StringIO(csv_content)
             reader = csv.reader(csv_data)
             data = []
             
             for row_num, row in enumerate(reader):
-                data.append(row)
-                if row_num < 3:  # Show first 3 rows for debugging
-                    print(f"[DEBUG] Row {row_num + 1}: {row}")
+                # ทำความสะอาดข้อมูลในแต่ละเซลล์เพื่อแปลง Unicode escape sequences
+                cleaned_row = []
+                for cell in row:
+                    if cell:
+                        cleaned_cell = clean_thai_text(cell)
+                        cleaned_row.append(cleaned_cell)
+                    else:
+                        cleaned_row.append(cell)
+                
+                data.append(cleaned_row)
+                
+                # Debug: แสดง 3 แถวแรกเพื่อตรวจสอบ
+                if row_num < 3:
+                    print(f"[DEBUG] Row {row_num + 1} (original): {row}")
+                    print(f"[DEBUG] Row {row_num + 1} (cleaned): {cleaned_row}")
             
             print(f"[DEBUG] Successfully parsed {len(data)} rows from Google Sheets")
+            print(f"[DEBUG] Sample cleaned data: {data[0] if data else 'No data'}")
+            
             return data
         else:
             print(f"[DEBUG] Google Sheets error: HTTP {response.status_code}")
@@ -544,6 +599,21 @@ def preview_data():
             'success': False,
             'error': f'เกิดข้อผิดพลาด: {str(e)}'
         })
+        
+    
+    # แปลง Unicode escape sequences
+    try:
+        # วิธีที่ 1: ใช้ codecs.decode
+        cleaned = codecs.decode(text, 'unicode_escape')
+        return cleaned
+    except:
+        try:
+            # วิธีที่ 2: ใช้ encode/decode
+            cleaned = text.encode().decode('unicode_escape')
+            return cleaned
+        except:
+            # หากแปลงไม่ได้ ให้คืนค่าเดิม
+            return text
 
 # New endpoint for testing Unicode conversion
 @app.route('/api/test-unicode', methods=['POST'])
