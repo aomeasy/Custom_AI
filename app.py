@@ -2,631 +2,289 @@ from flask import Flask, render_template, request, jsonify, session
 import requests
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import re
 import csv
 from io import StringIO
-import hashlib
-import sqlite3
-from collections import defaultdict, Counter
-import pickle
-import math
-from fuzzywuzzy import fuzz
-from textblob import TextBlob
-import jieba  # For Thai/Chinese text processing
-import threading
-import time
-from functools import lru_cache
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
-# Enhanced Configuration
+# Configuration
 CHAT_API_URL = "http://209.15.123.47:11434/api/generate"
 CHAT_MODEL = "Qwen3:14b"
-DEFAULT_SHEET_ID = "1ixUmFKZpub5x6WYtV8pwYU892uQPDlVtjGlxpiEBJNs"
+DEFAULT_SHEET_ID = "1_YcWW9AWew9afLVk08Tl5lN4iQMhxiQDz4qU3LsB-iE"
 
-# AI Intelligence Enhancement Classes
-class QueryProcessor:
-    """Advanced query processing and intent recognition"""
-    
-    def __init__(self):
-        self.intent_patterns = {
-            'data_request': {
-                'patterns': [
-                    r'(ขอ|แสดง|ดู|show|display|view).*(ข้อมูล|data|information)',
-                    r'(แถว|row|รายการ|list|record).*(\d+)?(แรก|first|ล่าสุด|latest)?',
-                    r'(ทั้งหมด|all|everything|summary|สรุป)',
-                ],
-                'keywords': ['ข้อมูล', 'แสดง', 'ดู', 'แถว', 'รายการ', 'ทั้งหมด']
-            },
-            'search_request': {
-                'patterns': [
-                    r'(หา|ค้นหา|search|find).*(ที่|where|with)',
-                    r'(มี|contains|include).*(อะไร|what|ไหน|which)',
-                ],
-                'keywords': ['หา', 'ค้นหา', 'search', 'find', 'where']
-            },
-            'analysis_request': {
-                'patterns': [
-                    r'(วิเคราะห์|analyze|analysis|สถิติ|statistics)',
-                    r'(เปรียบเทียบ|compare|comparison)',
-                    r'(จำนวน|count|sum|total|รวม)',
-                    r'(เฉลี่ย|average|mean|max|min|สูงสุด|ต่ำสุด)',
-                ],
-                'keywords': ['วิเคราะห์', 'สถิติ', 'เปรียบเทียบ', 'จำนวน', 'เฉลี่ย']
-            },
-            'help_request': {
-                'patterns': [
-                    r'(ช่วย|help|สอน|teach|วิธี|how)',
-                    r'(คำสั่ง|command|ใช้งาน|usage)',
-                ],
-                'keywords': ['ช่วย', 'help', 'สอน', 'วิธี', 'คำสั่ง']
-            }
-        }
-    
-    def detect_intent(self, query):
-        """Detect user intent from query"""
-        query_lower = query.lower()
-        intents = []
-        
-        for intent, config in self.intent_patterns.items():
-            score = 0
-            
-            # Pattern matching
-            for pattern in config['patterns']:
-                if re.search(pattern, query_lower):
-                    score += 3
-            
-            # Keyword matching
-            for keyword in config['keywords']:
-                if keyword in query_lower:
-                    score += 1
-            
-            if score > 0:
-                intents.append({'intent': intent, 'confidence': score})
-        
-        # Sort by confidence
-        intents.sort(key=lambda x: x['confidence'], reverse=True)
-        return intents[0] if intents else {'intent': 'general', 'confidence': 0}
-    
-    def extract_parameters(self, query):
-        """Extract parameters from query"""
-        params = {
-            'numbers': re.findall(r'\d+', query),
-            'date_mentions': re.findall(r'\d{1,2}[-/]\d{1,2}[-/]\d{2,4}', query),
-            'comparison_words': re.findall(r'(มากกว่า|น้อยกว่า|เท่ากับ|>|<|=)', query),
-            'aggregation_words': re.findall(r'(รวม|เฉลี่ย|สูงสุด|ต่ำสุด|sum|avg|max|min)', query)
-        }
-        return params
+# Default login credentials
+DEFAULT_USER = "admin"
+DEFAULT_PASSWORD = "password"
 
-class DataAnalyzer:
-    """Advanced data analysis capabilities"""
-    
-    @staticmethod
-    def analyze_data(data, query_params):
-        """Perform data analysis based on query parameters"""
-        if not data or len(data) < 2:
-            return None
-        
-        try:
-            headers = data[0] if data else []
-            rows = data[1:] if len(data) > 1 else []
-            
-            analysis = {
-                'basic_stats': DataAnalyzer.get_basic_stats(rows, headers),
-                'summary': DataAnalyzer.get_summary(rows, headers),
-                'patterns': DataAnalyzer.find_patterns(rows, headers)
-            }
-            
-            # Advanced analysis based on query
-            if query_params.get('aggregation_words'):
-                analysis['aggregations'] = DataAnalyzer.calculate_aggregations(rows, headers)
-            
-            return analysis
-        except Exception as e:
-            print(f"[DEBUG] Analysis error: {e}")
-            return None
-    
-    @staticmethod
-    def get_basic_stats(rows, headers):
-        """Calculate basic statistics"""
-        stats = {
-            'total_rows': len(rows),
-            'total_columns': len(headers),
-            'numeric_columns': [],
-            'text_columns': []
-        }
-        
-        if not rows:
-            return stats
-        
-        # Analyze column types
-        for col_idx, header in enumerate(headers):
-            numeric_count = 0
-            total_count = 0
-            
-            for row in rows[:10]:  # Sample first 10 rows
-                if col_idx < len(row) and row[col_idx]:
-                    try:
-                        float(row[col_idx])
-                        numeric_count += 1
-                    except:
-                        pass
-                    total_count += 1
-            
-            if total_count > 0 and numeric_count / total_count > 0.7:
-                stats['numeric_columns'].append(header)
-            else:
-                stats['text_columns'].append(header)
-        
-        return stats
-    
-    @staticmethod
-    def get_summary(rows, headers):
-        """Generate data summary"""
-        if not rows:
-            return "ไม่มีข้อมูลในตาราง"
-        
-        summary_parts = []
-        summary_parts.append(f"ข้อมูลทั้งหมด {len(rows)} แถว")
-        summary_parts.append(f"มี {len(headers)} คอลัมน์: {', '.join(headers[:5])}")
-        
-        if len(headers) > 5:
-            summary_parts.append("และอื่นๆ...")
-        
-        return " ".join(summary_parts)
-    
-    @staticmethod
-    def calculate_aggregations(rows, headers):
-        """Calculate aggregations for numeric columns"""
-        aggregations = {}
-        
-        for col_idx, header in enumerate(headers):
-            values = []
-            for row in rows:
-                if col_idx < len(row) and row[col_idx]:
-                    try:
-                        values.append(float(row[col_idx]))
-                    except:
-                        continue
-            
-            if values:
-                aggregations[header] = {
-                    'count': len(values),
-                    'sum': sum(values),
-                    'avg': sum(values) / len(values),
-                    'max': max(values),
-                    'min': min(values)
-                }
-        
-        return aggregations
-    
-    @staticmethod
-    def find_patterns(rows, headers):
-        """Find patterns in data"""
-        patterns = []
-        
-        if not rows:
-            return patterns
-        
-        # Find most common values
-        for col_idx, header in enumerate(headers[:3]):  # Check first 3 columns
-            values = []
-            for row in rows:
-                if col_idx < len(row) and row[col_idx]:
-                    values.append(row[col_idx])
-            
-            if values:
-                counter = Counter(values)
-                most_common = counter.most_common(3)
-                if most_common:
-                    patterns.append(f"{header}: ข้อมูลที่พบบ่อย - {', '.join([f'{v} ({c} ครั้ง)' for v, c in most_common])}")
-        
-        return patterns
+# In-memory storage (for demo purposes - in production use database)
+app_settings = {
+    'system_prompt': 'คุณเป็น AI Assistant ที่ช่วยค้นหาข้อมูลจาก Google Sheets อย่างชาญฉลาด ตอบคำถามด้วยความเป็นมิตรและให้ข้อมูลที่ถูกต้อง',
+    'google_sheet_id': DEFAULT_SHEET_ID,
+    'line_token': '',
+    'telegram_api': ''
+}
 
-class SmartSearch:
-    """Enhanced search with fuzzy matching and context awareness"""
-    
-    def __init__(self):
-        self.cache = {}
-        self.search_history = []
-    
-    @lru_cache(maxsize=100)
-    def fuzzy_search(self, query, data_str):
-        """Perform fuzzy search with caching"""
-        return fuzz.partial_ratio(query.lower(), data_str.lower())
-    
-    def smart_search(self, query, data, intent):
-        """Intelligent search based on intent and context"""
-        if not data:
-            return "ไม่สามารถเข้าถึงข้อมูลได้ในขณะนี้"
-        
-        print(f"[DEBUG] Smart search - Intent: {intent['intent']}, Query: '{query}'")
-        
-        # Process based on intent
-        if intent['intent'] == 'data_request':
-            return self.handle_data_request(query, data, intent)
-        elif intent['intent'] == 'search_request':
-            return self.handle_search_request(query, data, intent)
-        elif intent['intent'] == 'analysis_request':
-            return self.handle_analysis_request(query, data, intent)
-        else:
-            return self.handle_general_search(query, data, intent)
-    
-    def handle_data_request(self, query, data, intent):
-        """Handle data viewing requests"""
-        # Extract number of rows requested
-        numbers = re.findall(r'\d+', query)
-        requested_rows = int(numbers[0]) if numbers else 5
-        requested_rows = min(requested_rows, 20)  # Limit to 20 rows
-        
-        result_rows = []
-        headers = data[0] if data else []
-        
-        # Add headers
-        if headers:
-            result_rows.append(f"หัวข้อคอลัมน์: {' | '.join(headers)}")
-            result_rows.append("-" * 50)
-        
-        # Add data rows
-        for i in range(1, min(requested_rows + 1, len(data))):
-            if i < len(data) and data[i]:
-                row_display = ' | '.join([str(cell) if cell else '' for cell in data[i]])
-                result_rows.append(f"แถวที่ {i}: {row_display}")
-        
-        if result_rows:
-            # Add analysis
-            analyzer = DataAnalyzer()
-            analysis = analyzer.analyze_data(data, {})
-            if analysis:
-                result_rows.append("\n📊 สรุปข้อมูล:")
-                result_rows.append(analysis['summary'])
-        
-        return "\n".join(result_rows) if result_rows else "ไม่พบข้อมูลใน Google Sheets"
-    
-    def handle_search_request(self, query, data, intent):
-        """Handle specific search requests"""
-        query_lower = query.lower()
-        results = []
-        
-        # Enhanced search with fuzzy matching
-        for row_idx, row in enumerate(data):
-            row_score = 0
-            matched_cells = []
-            
-            for col_idx, cell in enumerate(row):
-                if cell:
-                    cell_str = str(cell)
-                    
-                    # Exact match (highest priority)
-                    if query_lower in cell_str.lower():
-                        row_score += 10
-                        matched_cells.append(f"คอลัมน์ {col_idx + 1}: {cell_str}")
-                    
-                    # Fuzzy match
-                    fuzzy_score = self.fuzzy_search(query, cell_str)
-                    if fuzzy_score > 70:  # 70% similarity threshold
-                        row_score += fuzzy_score / 10
-                        matched_cells.append(f"คอลัมน์ {col_idx + 1}: {cell_str} (คล้าย {fuzzy_score}%)")
-            
-            if row_score > 0:
-                results.append({
-                    'row_idx': row_idx,
-                    'score': row_score,
-                    'row_data': row,
-                    'matches': matched_cells
-                })
-        
-        # Sort by score and return top results
-        results.sort(key=lambda x: x['score'], reverse=True)
-        
-        if results:
-            formatted_results = []
-            for result in results[:5]:  # Top 5 results
-                row_display = ' | '.join([str(cell) if cell else '' for cell in result['row_data']])
-                formatted_results.append(f"แถวที่ {result['row_idx'] + 1}: {row_display}")
-                formatted_results.append(f"  └─ พบใน: {', '.join(result['matches'][:2])}")
-            
-            return "\n".join(formatted_results)
-        else:
-            return self.suggest_alternatives(query, data)
-    
-    def handle_analysis_request(self, query, data, intent):
-        """Handle data analysis requests"""
-        analyzer = DataAnalyzer()
-        query_processor = QueryProcessor()
-        
-        params = query_processor.extract_parameters(query)
-        analysis = analyzer.analyze_data(data, params)
-        
-        if not analysis:
-            return "ไม่สามารถวิเคราะห์ข้อมูลได้"
-        
-        result_parts = []
-        
-        # Basic statistics
-        if analysis.get('basic_stats'):
-            stats = analysis['basic_stats']
-            result_parts.append("📊 สถิติพื้นฐาน:")
-            result_parts.append(f"  • จำนวนแถว: {stats['total_rows']}")
-            result_parts.append(f"  • จำนวนคอลัมน์: {stats['total_columns']}")
-            
-            if stats['numeric_columns']:
-                result_parts.append(f"  • คอลัมน์ตัวเลข: {', '.join(stats['numeric_columns'])}")
-            
-            if stats['text_columns']:
-                result_parts.append(f"  • คอลัมน์ข้อความ: {', '.join(stats['text_columns'][:3])}")
-        
-        # Aggregations
-        if analysis.get('aggregations'):
-            result_parts.append("\n🔢 การคำนวณ:")
-            for col, agg in list(analysis['aggregations'].items())[:3]:
-                result_parts.append(f"  • {col}:")
-                result_parts.append(f"    - จำนวน: {agg['count']}")
-                result_parts.append(f"    - รวม: {agg['sum']:.2f}")
-                result_parts.append(f"    - เฉลี่ย: {agg['avg']:.2f}")
-                result_parts.append(f"    - สูงสุด: {agg['max']:.2f}")
-                result_parts.append(f"    - ต่ำสุด: {agg['min']:.2f}")
-        
-        # Patterns
-        if analysis.get('patterns'):
-            result_parts.append("\n🔍 รูปแบบที่พบ:")
-            for pattern in analysis['patterns'][:3]:
-                result_parts.append(f"  • {pattern}")
-        
-        return "\n".join(result_parts)
-    
-    def handle_general_search(self, query, data, intent):
-        """Handle general queries"""
-        return self.handle_search_request(query, data, intent)
-    
-    def suggest_alternatives(self, query, data):
-        """Suggest alternative searches when no results found"""
-        suggestions = []
-        
-        # Get available column names
-        headers = data[0] if data else []
-        if headers:
-            suggestions.append(f"คอลัมน์ที่มี: {', '.join(headers[:5])}")
-        
-        # Get sample data
-        if len(data) > 1:
-            sample_values = []
-            for row in data[1:3]:  # First 2 data rows
-                for cell in row[:3]:  # First 3 cells
-                    if cell and len(str(cell)) > 2:
-                        sample_values.append(str(cell))
-            
-            if sample_values:
-                suggestions.append(f"ข้อมูลตัวอย่าง: {', '.join(sample_values[:5])}")
-        
-        result = "ไม่พบข้อมูลที่ตรงกับคำค้นหา\n\n💡 คำแนะนำ:"
-        for suggestion in suggestions:
-            result += f"\n  • {suggestion}"
-        
-        return result
-
-class ConversationMemory:
-    """Remember conversation context and learning from interactions"""
-    
-    def __init__(self):
-        self.conversation_history = []
-        self.user_preferences = {}
-        self.frequent_queries = Counter()
-    
-    def add_interaction(self, query, response, context_found):
-        """Add interaction to memory"""
-        interaction = {
-            'timestamp': datetime.now(),
-            'query': query,
-            'response': response,
-            'context_found': context_found,
-            'query_hash': hashlib.md5(query.lower().encode()).hexdigest()
-        }
-        
-        self.conversation_history.append(interaction)
-        self.frequent_queries[query.lower()] += 1
-        
-        # Keep only last 100 interactions
-        if len(self.conversation_history) > 100:
-            self.conversation_history = self.conversation_history[-100:]
-    
-    def get_context(self, current_query):
-        """Get relevant context from conversation history"""
-        if not self.conversation_history:
-            return None
-        
-        # Find similar previous queries
-        similar_interactions = []
-        current_query_lower = current_query.lower()
-        
-        for interaction in self.conversation_history[-10:]:  # Last 10 interactions
-            similarity = fuzz.partial_ratio(current_query_lower, interaction['query'].lower())
-            if similarity > 60:
-                similar_interactions.append(interaction)
-        
-        return similar_interactions[-1] if similar_interactions else None
-    
-    def get_popular_queries(self):
-        """Get most popular queries"""
-        return self.frequent_queries.most_common(5)
-
-# Enhanced main functions
-query_processor = QueryProcessor()
-smart_search = SmartSearch()
-conversation_memory = ConversationMemory()
-
-def enhanced_search_sheet_data(query):
-    """Enhanced search with AI intelligence"""
+def get_google_sheet_data(sheet_id, range_name="A:Z"):
+    """Fetch data from Google Sheets with improved error handling"""
     try:
-        print(f"[DEBUG] Enhanced search for query: '{query}'")
+        # Using public Google Sheets CSV export
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+        print(f"[DEBUG] Fetching Google Sheet: {csv_url}")
+        
+        response = requests.get(csv_url, timeout=10)
+        print(f"[DEBUG] Google Sheets response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            print(f"[DEBUG] Raw CSV response length: {len(response.text)} characters")
+            print(f"[DEBUG] CSV preview: {response.text[:200]}...")
+            
+            # Better CSV parsing using csv module
+            csv_data = StringIO(response.text)
+            reader = csv.reader(csv_data)
+            data = []
+            
+            for row_num, row in enumerate(reader):
+                data.append(row)
+                if row_num < 3:  # Show first 3 rows for debugging
+                    print(f"[DEBUG] Row {row_num + 1}: {row}")
+            
+            print(f"[DEBUG] Successfully parsed {len(data)} rows from Google Sheets")
+            return data
+        else:
+            print(f"[DEBUG] Google Sheets error: HTTP {response.status_code}")
+            print(f"[DEBUG] Error response: {response.text[:500]}")
+            return None
+            
+    except Exception as e:
+        print(f"[DEBUG] Error fetching Google Sheets data: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def authenticate_user(username, password):
+    """Authenticate user - first check default credentials, then Google Sheets"""
+    try:
+        # Check default credentials first
+        if username == DEFAULT_USER and password == DEFAULT_PASSWORD:
+            print(f"[DEBUG] User authenticated with default credentials: {username}")
+            return True
+        
+        # Then check Google Sheets
+        print(f"[DEBUG] Checking Google Sheets for user: {username}")
+        data = get_google_sheet_data(app_settings['google_sheet_id'])
+        if data and len(data) > 1:  # Check if we have data beyond headers
+            print(f"[DEBUG] Searching through {len(data)} rows for user credentials")
+            # Look for user in A2, B2 or scan through the sheet
+            for i, row in enumerate(data[1:], 1):  # Skip header row
+                if len(row) >= 2 and row[0] == username and row[1] == password:
+                    print(f"[DEBUG] User found in Google Sheets at row {i + 1}")
+                    return True
+        
+        print(f"[DEBUG] User authentication failed: {username}")
+        return False
+    except Exception as e:
+        print(f"[DEBUG] Authentication error: {e}")
+        # If Google Sheets fails, still allow default login
+        return username == DEFAULT_USER and password == DEFAULT_PASSWORD
+
+def search_sheet_data(query):
+    """Search for relevant data in Google Sheets with enhanced pattern matching"""
+    try:
+        print(f"[DEBUG] Searching Google Sheets for query: '{query}'")
         data = get_google_sheet_data(app_settings['google_sheet_id'])
         
         if not data:
             print("[DEBUG] No data returned from Google Sheets")
             return "ไม่สามารถเข้าถึงข้อมูลได้ในขณะนี้"
         
-        # Detect intent
-        intent = query_processor.detect_intent(query)
-        print(f"[DEBUG] Detected intent: {intent}")
+        print(f"[DEBUG] Searching through {len(data)} rows")
         
-        # Get conversation context
-        context = conversation_memory.get_context(query)
-        if context:
-            print(f"[DEBUG] Found similar previous query: {context['query']}")
+        query_lower = query.lower()
         
-        # Perform smart search
-        result = smart_search.smart_search(query, data, intent)
+        # Check for common data viewing patterns
+        show_data_patterns = [
+            'ขอดูข้อมูล', 'แสดงข้อมูล', 'ดูข้อมูล', 'แสดง', 'ดู',
+            'แถวแรก', 'แถว', 'รายการ', 'ข้อมูลทั้งหมด',
+            'show data', 'display data', 'view data', 'first rows'
+        ]
         
-        # Remember this interaction
-        context_found = bool(result and 'ไม่พบข้อมูล' not in result and 'ไม่สามารถเข้าถึงข้อมูล' not in result)
-        conversation_memory.add_interaction(query, result, context_found)
+        # Check if user wants to view data
+        is_data_request = any(pattern in query_lower for pattern in show_data_patterns)
         
-        return result
+        # Extract number of rows if specified
+        import re
+        numbers = re.findall(r'\d+', query)
+        requested_rows = int(numbers[0]) if numbers else 5
         
+        if is_data_request:
+            # Return first N rows of data
+            print(f"[DEBUG] Detected data viewing request for {requested_rows} rows")
+            result_rows = []
+            
+            # Limit to reasonable number
+            max_rows = min(requested_rows, 10, len(data))
+            
+            for i in range(max_rows):
+                if i < len(data) and data[i]:
+                    row_display = ' | '.join([str(cell) for cell in data[i] if cell])
+                    result_rows.append(f"แถวที่ {i + 1}: {row_display}")
+            
+            if result_rows:
+                result = "\n".join(result_rows)
+                print(f"[DEBUG] Returning {len(result_rows)} rows of data")
+                return result
+            else:
+                return "ไม่พบข้อมูลใน Google Sheets"
+        
+        # Original search functionality for specific content
+        relevant_data = []
+        
+        for row_idx, row in enumerate(data):
+            for col_idx, cell in enumerate(row):
+                if cell and query_lower in str(cell).lower():
+                    relevant_data.append(f"แถวที่ {row_idx + 1}: {' | '.join([str(c) for c in row if c])}")
+                    print(f"[DEBUG] Match found at row {row_idx + 1}, col {col_idx + 1}: {cell}")
+        
+        print(f"[DEBUG] Found {len(relevant_data)} matches")
+        
+        if relevant_data:
+            # Remove duplicates and return top 5 matches
+            unique_data = list(dict.fromkeys(relevant_data))
+            result = "\n".join(unique_data[:5])
+            print(f"[DEBUG] Returning search results: {result[:200]}...")
+            return result
+        else:
+            print("[DEBUG] No matches found in search")
+            return "ไม่พบข้อมูลที่ตรงกับคำค้นหา"
+            
     except Exception as e:
-        print(f"[DEBUG] Enhanced search error: {e}")
+        print(f"[DEBUG] Search error: {e}")
         import traceback
         traceback.print_exc()
         return f"เกิดข้อผิดพลาดในการค้นหา: {str(e)}"
 
-def enhanced_call_ai_model(prompt, context=""):
-    """Enhanced AI model call with better prompting"""
+
+def call_ai_model(prompt, context=""):
+    """Call the AI model with context and enhanced debugging"""
     try:
-        # Get conversation context
-        conversation_context = conversation_memory.get_context(prompt)
-        context_info = ""
-        if conversation_context:
-            context_info = f"\nบริบทจากการสนทนาก่อนหน้า: {conversation_context['query']} -> {conversation_context['response'][:100]}..."
-        
-        # Enhanced system prompt with advanced instructions
+        # Enhanced system prompt to handle data viewing requests better
         enhanced_system_prompt = f"""{app_settings['system_prompt']}
 
-🧠 คำแนะนำขั้นสูงสำหรับการตอบ:
-1. วิเคราะห์เจตนาของผู้ใช้ก่อนตอบ
-2. หากมีข้อมูลใน Context ให้นำมาใช้อย่างชาญฉลาด
-3. จัดรูปแบบคำตอบให้อ่านง่าย ใส่อีโมจิที่เหมาะสม
-4. ให้คำแนะนำเพิ่มเติมหากเป็นประโยชน์
-5. หากไม่มีข้อมูลที่ตรงกัน ให้แนะนำทางเลือกอื่น
-
-📊 เมื่อแสดงข้อมูล:
-- ใส่หัวข้อชัดเจน
-- จัดรูปแบบเป็นตาราง หรือจุดย่อย
-- เพิ่มสรุปหรือข้อสังเกตที่น่าสนใจ
-
-🔍 เมื่อค้นหาข้อมูล:
-- บอกจำนวนผลลัพธ์ที่พบ
-- เรียงลำดับตามความเกี่ยวข้อง
-- แนะนำคำค้นหาที่ดีกว่าหากไม่พบ
-
-{context_info}"""
+คำแนะนำเพิ่มเติม:
+- เมื่อผู้ใช้ถามขอดูข้อมูล แสดงข้อมูล หรือคำถามคล้ายกัน ให้แสดงข้อมูลที่มีใน Context
+- หากมีข้อมูลใน Context แล้ว ไม่ต้องบอกว่า "ไม่พบข้อมูล"
+- จัดรูปแบบข้อมูลให้อ่านง่าย เช่น ใส่หัวข้อ หรือจัดเรียงเป็นตาราง
+- หาก Context มีข้อมูล ให้ตอบจากข้อมูลนั้นเสมอ"""
         
-        full_prompt = f"{enhanced_system_prompt}\n\nข้อมูลจาก Google Sheets:\n{context}\n\nคำถามของผู้ใช้: {prompt}"
+        full_prompt = f"{enhanced_system_prompt}\n\nContext from Google Sheets:\n{context}\n\nUser question: {prompt}"
         
         payload = {
             "model": CHAT_MODEL,
             "prompt": full_prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "max_tokens": 2048
-            }
+            "stream": False
         }
         
-        print(f"[DEBUG] Calling enhanced AI model: {CHAT_MODEL}")
+        print(f"[DEBUG] Calling AI model: {CHAT_MODEL}")
+        print(f"[DEBUG] API URL: {CHAT_API_URL}")
         print(f"[DEBUG] Prompt length: {len(full_prompt)} characters")
         print(f"[DEBUG] Context preview: {context[:200]}...")
         
-        response = requests.post(CHAT_API_URL, json=payload, timeout=45)
+        response = requests.post(CHAT_API_URL, json=payload, timeout=30)
         
         print(f"[DEBUG] AI response status: {response.status_code}")
         
         if response.status_code == 200:
             result = response.json()
             ai_response = result.get('response', 'ไม่สามารถสร้างคำตอบได้')
-            
-            # Post-process response
-            ai_response = post_process_response(ai_response, context)
-            
             print(f"[DEBUG] AI response length: {len(ai_response)} characters")
+            print(f"[DEBUG] AI response preview: {ai_response[:200]}...")
             return ai_response
         else:
             error_msg = f"HTTP {response.status_code}: {response.text}"
             print(f"[DEBUG] AI error: {error_msg}")
-            return "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ AI โปรดลองใหม่อีกครั้ง"
+            return "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ AI"
             
     except Exception as e:
-        print(f"[DEBUG] Enhanced AI Model error: {e}")
+        print(f"[DEBUG] AI Model error: {e}")
         import traceback
         traceback.print_exc()
         return "เกิดข้อผิดพลาดในการประมวลผล โปรดลองใหม่อีกครั้ง"
 
-def post_process_response(response, context):
-    """Post-process AI response for better quality"""
+def call_ai_model(prompt, context=""):
+    """Call the AI model with context and enhanced debugging"""
     try:
-        # Add helpful suggestions if response is too short
-        if len(response) < 50 and context:
-            response += "\n\n💡 คุณสามารถถามเพิ่มเติม เช่น:\n"
-            response += "  • ขอดูข้อมูลเพิ่มเติม\n"
-            response += "  • วิเคราะห์ข้อมูลนี้\n"
-            response += "  • เปรียบเทียบข้อมูล"
+        full_prompt = f"{app_settings['system_prompt']}\n\nContext from Google Sheets:\n{context}\n\nUser question: {prompt}"
         
-        # Add popular queries suggestion
-        popular = conversation_memory.get_popular_queries()
-        if popular and len(response) < 100:
-            response += "\n\n🔥 คำถามยอดนิยม:\n"
-            for query, count in popular[:3]:
-                if len(query) < 50:
-                    response += f"  • {query}\n"
+        payload = {
+            "model": CHAT_MODEL,
+            "prompt": full_prompt,
+            "stream": False
+        }
         
-        return response
+        print(f"[DEBUG] Calling AI model: {CHAT_MODEL}")
+        print(f"[DEBUG] API URL: {CHAT_API_URL}")
+        print(f"[DEBUG] Prompt length: {len(full_prompt)} characters")
+        print(f"[DEBUG] Context preview: {context[:200]}...")
         
+        response = requests.post(CHAT_API_URL, json=payload, timeout=30)
+        
+        print(f"[DEBUG] AI response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result.get('response', 'ไม่สามารถสร้างคำตอบได้')
+            print(f"[DEBUG] AI response length: {len(ai_response)} characters")
+            print(f"[DEBUG] AI response preview: {ai_response[:200]}...")
+            return ai_response
+        else:
+            error_msg = f"HTTP {response.status_code}: {response.text}"
+            print(f"[DEBUG] AI error: {error_msg}")
+            return "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ AI"
+            
     except Exception as e:
-        print(f"[DEBUG] Post-process error: {e}")
-        return response
+        print(f"[DEBUG] AI Model error: {e}")
+        import traceback
+        traceback.print_exc()
+        return "เกิดข้อผิดพลาดในการประมวลผล โปรดลองใหม่อีกครั้ง"
 
-# Enhanced API endpoints
 @app.route('/')
 def index():
-    """หน้าแรกของแอปพลิเคชัน"""
-    if not session.get('logged_in'):
-        return render_template('login.html')
     return render_template('index.html')
 
-
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/api/login', methods=['POST'])
 def login():
-    """จัดการการเข้าสู่ระบบ - เข้าได้เสมอ"""
-    if request.method == 'POST':
-        # เข้าระบบโดยไม่ตรวจสอบอะไรเลย
-        session['logged_in'] = True
-        session['username'] = 'admin'
+    try:
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
         
-        print(f"[DEBUG] Auto-login successful")
+        print(f"[DEBUG] Login attempt for user: {username}")
         
-        # ส่งกลับ JSON response หรือ redirect
-        try:
-            if request.is_json or request.content_type == 'application/json':
-                return jsonify({'success': True})
-        except:
-            pass
-        
-        return redirect('/')
-    
-    # GET request - แสดงหน้า login
-    return render_template('login.html')
+        if authenticate_user(username, password):
+            session['logged_in'] = True
+            session['username'] = username
+            print(f"[DEBUG] Login successful for user: {username}")
+            return jsonify({'success': True, 'message': 'เข้าสู่ระบบสำเร็จ'})
+        else:
+            print(f"[DEBUG] Login failed for user: {username}")
+            return jsonify({'success': False, 'message': 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'})
+            
+    except Exception as e:
+        print(f"[DEBUG] Login error: {e}")
+        return jsonify({'success': False, 'message': 'เกิดข้อผิดพลาดในระบบ'})
 
-@app.route('/logout')
+@app.route('/api/logout', methods=['POST'])
 def logout():
-    """ออกจากระบบ"""
+    username = session.get('username', 'unknown')
     session.clear()
-    return redirect('/')
-    
-@app.route('/api/enhanced-chat', methods=['POST'])
-def enhanced_chat():
-    """Enhanced chat endpoint with AI intelligence"""
+    print(f"[DEBUG] User logged out: {username}")
+    return jsonify({'success': True, 'message': 'ออกจากระบบสำเร็จ'})
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
     if not session.get('logged_in'):
         return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
     
@@ -634,604 +292,371 @@ def enhanced_chat():
         data = request.json
         message = data.get('message', '')
         
-        print(f"[DEBUG] Enhanced chat message: '{message}'")
+        print(f"[DEBUG] Chat message received: '{message}'")
         
         if not message:
             return jsonify({'error': 'กรุณาใส่ข้อความ'})
         
-        # Enhanced search with AI intelligence
-        print("[DEBUG] Starting enhanced Google Sheets search...")
-        context = enhanced_search_sheet_data(message)
+        # Search for relevant context in Google Sheets
+        print("[DEBUG] Starting Google Sheets search...")
+        context = search_sheet_data(message)
         
-        # Enhanced AI response
-        print("[DEBUG] Starting enhanced AI model call...")
-        ai_response = enhanced_call_ai_model(message, context)
+        # Get AI response
+        print("[DEBUG] Starting AI model call...")
+        ai_response = call_ai_model(message, context)
         
         context_found = bool(context and 'ไม่พบข้อมูล' not in context and 'ไม่สามารถเข้าถึงข้อมูล' not in context)
         
-        # Detect intent for response metadata
-        intent = query_processor.detect_intent(message)
-        
-        print(f"[DEBUG] Enhanced chat completed - Intent: {intent['intent']}, Context found: {context_found}")
+        print(f"[DEBUG] Chat response completed - Context found: {context_found}")
         
         return jsonify({
             'response': ai_response,
             'context_found': context_found,
-            'intent': intent,
             'timestamp': datetime.now().isoformat(),
             'debug_info': {
-                'context_preview': context[:150] + '...' if len(context) > 150 else context,
-                'sheet_id': app_settings['google_sheet_id'],
-                'conversation_count': len(conversation_memory.conversation_history)
+                'context_preview': context[:100] + '...' if len(context) > 100 else context,
+                'sheet_id': app_settings['google_sheet_id']
             }
         })
         
     except Exception as e:
-        print(f"[DEBUG] Enhanced chat error: {e}")
+        print(f"[DEBUG] Chat error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': 'เกิดข้อผิดพลาดในการประมวลผล'}), 500
 
-@app.route('/api/conversation-stats', methods=['GET'])
-def conversation_stats():
-    """Get conversation statistics"""
-    if not session.get('logged_in'):
-        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
-    
-    try:
-        popular_queries = conversation_memory.get_popular_queries()
-        recent_interactions = conversation_memory.conversation_history[-5:] if conversation_memory.conversation_history else []
-        
-        stats = {
-            'total_interactions': len(conversation_memory.conversation_history),
-            'popular_queries': [{'query': q, 'count': c} for q, c in popular_queries],
-            'recent_interactions': [
-                {
-                    'query': interaction['query'][:50] + '...' if len(interaction['query']) > 50 else interaction['query'],
-                    'timestamp': interaction['timestamp'].isoformat(),
-                    'context_found': interaction['context_found']
-                }
-                for interaction in recent_interactions
-            ]
-        }
-        
-        return jsonify(stats)
-        
-    except Exception as e:
-        print(f"[DEBUG] Stats error: {e}")
-        return jsonify({'error': 'เกิดข้อผิดพลาดในการดึงสถิติ'}), 500
-
-# Update settings to include enhanced options
-app_settings = {
-    'system_prompt': '''คุณเป็น AI Assistant ที่ช่วยค้นหาและวิเคราะห์ข้อมูลจาก Google Sheets อย่างชาญฉลาด 
-    ตอบคำถามด้วยความเป็นมิตรและให้ข้อมูลที่ถูกต้อง ใช้อีโมจิให้เหมาะสม จัดรูปแบบให้อ่านง่าย 
-    และให้คำแนะนำที่เป็นประโยชน์เสมอ''',
-    'google_sheet_id': DEFAULT_SHEET_ID,
-    'line_token': '',
-    'telegram_api': '',
-    'ai_temperature': 0.7,
-    'max_response_length': 2048,
-    'enable_fuzzy_search': True,
-    'enable_analytics': True,
-    'conversation_memory': True,
-    # เพิ่มส่วนนี้
-    'default_credentials': {
-        'username': 'admin',
-        'password': 'password'
-    }
-}
-
-# Additional utility functions for enhanced functionality
-class DataValidator:
-    """Validate and clean data for better processing"""
-    
-    @staticmethod
-    def validate_sheet_data(data):
-        """Validate and clean sheet data"""
-        if not data:
-            return None
-        
-        cleaned_data = []
-        for row_idx, row in enumerate(data):
-            cleaned_row = []
-            for cell in row:
-                if cell is not None:
-                    # Clean whitespace and special characters
-                    cleaned_cell = str(cell).strip()
-                    # Handle Thai encoding issues
-                    try:
-                        cleaned_cell = cleaned_cell.encode('utf-8').decode('utf-8')
-                    except:
-                        pass
-                    cleaned_row.append(cleaned_cell)
-                else:
-                    cleaned_row.append('')
-            cleaned_data.append(cleaned_row)
-        
-        return cleaned_data
-    
-    @staticmethod
-    def detect_data_types(data):
-        """Detect data types in columns"""
-        if not data or len(data) < 2:
-            return {}
-        
-        headers = data[0]
-        rows = data[1:]
-        column_types = {}
-        
-        for col_idx, header in enumerate(headers):
-            types = {'number': 0, 'date': 0, 'text': 0, 'empty': 0}
-            total_samples = 0
-            
-            for row in rows[:20]:  # Sample first 20 rows
-                if col_idx < len(row):
-                    cell = row[col_idx]
-                    if not cell:
-                        types['empty'] += 1
-                    else:
-                        total_samples += 1
-                        # Check if number
-                        try:
-                            float(cell)
-                            types['number'] += 1
-                        except:
-                            # Check if date
-                            if re.match(r'\d{1,2}[-/]\d{1,2}[-/]\d{2,4}', str(cell)):
-                                types['date'] += 1
-                            else:
-                                types['text'] += 1
-            
-            if total_samples > 0:
-                dominant_type = max(types, key=types.get)
-                confidence = types[dominant_type] / total_samples
-                column_types[header] = {'type': dominant_type, 'confidence': confidence}
-        
-        return column_types
-
-class ResponseFormatter:
-    """Format responses for better readability"""
-    
-    @staticmethod
-    def format_table_data(data, max_rows=10):
-        """Format data as a readable table"""
-        if not data:
-            return "ไม่มีข้อมูล"
-        
-        headers = data[0] if data else []
-        rows = data[1:max_rows+1] if len(data) > 1 else []
-        
-        if not headers:
-            return "ไม่พบหัวข้อคอลัมน์"
-        
-        # Calculate column widths
-        col_widths = []
-        for i, header in enumerate(headers):
-            max_width = len(str(header))
-            for row in rows:
-                if i < len(row) and row[i]:
-                    max_width = max(max_width, len(str(row[i])))
-            col_widths.append(min(max_width, 20))  # Limit to 20 chars
-        
-        # Format table
-        formatted = []
-        
-        # Headers
-        header_row = "| " + " | ".join([str(h)[:w].ljust(w) for h, w in zip(headers, col_widths)]) + " |"
-        separator = "|" + "|".join(["-" * (w + 2) for w in col_widths]) + "|"
-        
-        formatted.append("📊 **ตารางข้อมูล**")
-        formatted.append("```")
-        formatted.append(header_row)
-        formatted.append(separator)
-        
-        # Data rows
-        for row_idx, row in enumerate(rows):
-            cells = []
-            for col_idx, width in enumerate(col_widths):
-                cell = row[col_idx] if col_idx < len(row) else ""
-                cell_str = str(cell)[:width].ljust(width) if cell else " " * width
-                cells.append(cell_str)
-            formatted.append("| " + " | ".join(cells) + " |")
-        
-        formatted.append("```")
-        
-        if len(data) > max_rows + 1:
-            formatted.append(f"... และอีก {len(data) - max_rows - 1} แถว")
-        
-        return "\n".join(formatted)
-    
-    @staticmethod
-    def format_search_results(results, query):
-        """Format search results nicely"""
-        if not results:
-            return f"🔍 ไม่พบข้อมูลที่ตรงกับ \"{query}\""
-        
-        formatted = [f"🔍 **ผลการค้นหา: \"{query}\"**\n"]
-        
-        for idx, result in enumerate(results[:5], 1):
-            formatted.append(f"**{idx}.** {result}")
-            if idx < len(results):
-                formatted.append("")
-        
-        if len(results) > 5:
-            formatted.append(f"\n... และอีก {len(results) - 5} ผลลัพธ์")
-        
-        return "\n".join(formatted)
-    
-    @staticmethod
-    def format_analysis_result(analysis):
-        """Format analysis results"""
-        if not analysis:
-            return "ไม่สามารถวิเคราะห์ข้อมูลได้"
-        
-        formatted = ["📈 **การวิเคราะห์ข้อมูล**\n"]
-        
-        # Basic stats
-        if 'basic_stats' in analysis:
-            stats = analysis['basic_stats']
-            formatted.append("**📊 สถิติพื้นฐาน:**")
-            formatted.append(f"• จำนวนแถว: {stats.get('total_rows', 0):,}")
-            formatted.append(f"• จำนวนคอลัมน์: {stats.get('total_columns', 0)}")
-            
-            if stats.get('numeric_columns'):
-                formatted.append(f"• คอลัมน์ตัวเลข: {', '.join(stats['numeric_columns'][:5])}")
-            
-            formatted.append("")
-        
-        # Aggregations
-        if 'aggregations' in analysis:
-            formatted.append("**🔢 การคำนวณ:**")
-            for col, agg in list(analysis['aggregations'].items())[:3]:
-                formatted.append(f"• **{col}:**")
-                formatted.append(f"  - จำนวน: {agg['count']:,}")
-                formatted.append(f"  - รวม: {agg['sum']:,.2f}")
-                formatted.append(f"  - เฉลี่ย: {agg['avg']:,.2f}")
-                formatted.append(f"  - สูงสุด: {agg['max']:,.2f}")
-                formatted.append(f"  - ต่ำสุด: {agg['min']:,.2f}")
-                formatted.append("")
-        
-        # Patterns
-        if 'patterns' in analysis:
-            formatted.append("**🔍 รูปแบบที่พบ:**")
-            for pattern in analysis['patterns']:
-                formatted.append(f"• {pattern}")
-        
-        return "\n".join(formatted)
-
-class QuickCommands:
-    """Handle quick commands and shortcuts"""
-    
-    COMMANDS = {
-        'help': 'แสดงคำสั่งที่ใช้ได้',
-        'data': 'แสดงข้อมูล 5 แถวแรก',
-        'all': 'แสดงข้อมูลทั้งหมด (จำกัด 20 แถว)',
-        'stats': 'แสดงสถิติข้อมูล',
-        'headers': 'แสดงหัวข้อคอลัมน์',
-        'clear': 'ล้างประวัติการสนทนา',
-        'popular': 'แสดงคำถามยอดนิยม'
-    }
-    
-    @staticmethod
-    def is_command(query):
-        """Check if query is a command"""
-        query_clean = query.strip().lower()
-        return query_clean in QuickCommands.COMMANDS or query_clean.startswith('/')
-    
-    @staticmethod
-    def execute_command(query, data, memory):
-        """Execute quick command"""
-        query_clean = query.strip().lower().replace('/', '')
-        
-        if query_clean == 'help':
-            help_text = ["🤖 **คำสั่งที่ใช้ได้:**\n"]
-            for cmd, desc in QuickCommands.COMMANDS.items():
-                help_text.append(f"• `{cmd}` - {desc}")
-            help_text.append("\n💡 **ตัวอย่างคำถาม:**")
-            help_text.append("• ขอดูข้อมูล 10 แถว")
-            help_text.append("• หาข้อมูลที่มีคำว่า 'xyz'")
-            help_text.append("• วิเคราะห์ข้อมูลในคอลัมน์ ABC")
-            help_text.append("• เปรียบเทียบข้อมูลเดือนนี้กับเดือนที่แล้ว")
-            return "\n".join(help_text)
-        
-        elif query_clean == 'data':
-            if data and len(data) > 1:
-                formatter = ResponseFormatter()
-                return formatter.format_table_data(data, 5)
-            return "ไม่มีข้อมูลในระบบ"
-        
-        elif query_clean == 'all':
-            if data and len(data) > 1:
-                formatter = ResponseFormatter()
-                return formatter.format_table_data(data, 20)
-            return "ไม่มีข้อมูลในระบบ"
-        
-        elif query_clean == 'stats':
-            if data:
-                analyzer = DataAnalyzer()
-                analysis = analyzer.analyze_data(data, {})
-                formatter = ResponseFormatter()
-                return formatter.format_analysis_result(analysis)
-            return "ไม่มีข้อมูลในระบบ"
-        
-        elif query_clean == 'headers':
-            if data and data[0]:
-                headers = data[0]
-                result = ["📝 **หัวข้อคอลัมน์:**\n"]
-                for i, header in enumerate(headers, 1):
-                    result.append(f"{i}. {header}")
-                return "\n".join(result)
-            return "ไม่พบหัวข้อคอลัมน์"
-        
-        elif query_clean == 'clear':
-            memory.conversation_history.clear()
-            memory.frequent_queries.clear()
-            return "✅ ล้างประวัติการสนทนาเรียบร้อยแล้ว"
-        
-        elif query_clean == 'popular':
-            popular = memory.get_popular_queries()
-            if popular:
-                result = ["🔥 **คำถามยอดนิยม:**\n"]
-                for i, (query, count) in enumerate(popular, 1):
-                    result.append(f"{i}. {query} ({count} ครั้ง)")
-                return "\n".join(result)
-            return "ยังไม่มีคำถามในระบบ"
-        
-        return "ไม่พบคำสั่งนี้ พิมพ์ 'help' เพื่อดูคำสั่งที่ใช้ได้"
-
-# Update the enhanced search function to use new features
-def ultra_enhanced_search_sheet_data(query):
-    """Ultra enhanced search with all features"""
-    try:
-        print(f"[DEBUG] Ultra enhanced search for query: '{query}'")
-        
-        # Get and validate data
-        raw_data = get_google_sheet_data(app_settings['google_sheet_id'])
-        if not raw_data:
-            return "ไม่สามารถเข้าถึงข้อมูลได้ในขณะนี้"
-        
-        # Clean and validate data
-        validator = DataValidator()
-        data = validator.validate_sheet_data(raw_data)
-        
-        # Check for quick commands
-        if QuickCommands.is_command(query):
-            return QuickCommands.execute_command(query, data, conversation_memory)
-        
-        # Detect intent and parameters
-        intent = query_processor.detect_intent(query)
-        params = query_processor.extract_parameters(query)
-        
-        print(f"[DEBUG] Intent: {intent}, Parameters: {params}")
-        
-        # Get conversation context
-        context = conversation_memory.get_context(query)
-        
-        # Perform intelligent search based on intent
-        if intent['intent'] == 'data_request':
-            formatter = ResponseFormatter()
-            numbers = params.get('numbers', [])
-            requested_rows = int(numbers[0]) if numbers else 10
-            
-            if any(word in query.lower() for word in ['ทั้งหมด', 'all', 'everything']):
-                requested_rows = 20
-            
-            result = formatter.format_table_data(data, requested_rows)
-            
-            # Add quick analysis
-            if len(data) > 1:
-                analyzer = DataAnalyzer()
-                analysis = analyzer.analyze_data(data, params)
-                if analysis and analysis.get('summary'):
-                    result += f"\n\n💡 **สรุป:** {analysis['summary']}"
-            
-        elif intent['intent'] == 'analysis_request':
-            analyzer = DataAnalyzer()
-            analysis = analyzer.analyze_data(data, params)
-            formatter = ResponseFormatter()
-            result = formatter.format_analysis_result(analysis)
-            
-        elif intent['intent'] == 'search_request':
-            # Enhanced fuzzy search
-            search_results = []
-            query_lower = query.lower()
-            
-            # Remove common words
-            stop_words = ['หา', 'ค้นหา', 'ที่', 'มี', 'ใน', 'the', 'in', 'with', 'find', 'search']
-            search_terms = [word for word in query_lower.split() if word not in stop_words and len(word) > 1]
-            
-            if not search_terms:
-                search_terms = [query_lower]
-            
-            for row_idx, row in enumerate(data):
-                row_score = 0
-                matched_terms = []
-                
-                for col_idx, cell in enumerate(row):
-                    if cell:
-                        cell_lower = str(cell).lower()
-                        for term in search_terms:
-                            if term in cell_lower:
-                                row_score += 10
-                                matched_terms.append(term)
-                            elif app_settings.get('enable_fuzzy_search', True):
-                                fuzzy_score = fuzz.partial_ratio(term, cell_lower)
-                                if fuzzy_score > 75:
-                                    row_score += fuzzy_score / 10
-                                    matched_terms.append(f"{term}~{fuzzy_score}%")
-                
-                if row_score > 0:
-                    row_display = ' | '.join([str(cell)[:30] + ('...' if len(str(cell)) > 30 else '') 
-                                            for cell in row if cell])
-                    search_results.append({
-                        'row_idx': row_idx,
-                        'score': row_score,
-                        'display': f"แถวที่ {row_idx + 1}: {row_display}",
-                        'matches': matched_terms
-                    })
-            
-            # Sort and format results
-            search_results.sort(key=lambda x: x['score'], reverse=True)
-            
-            formatter = ResponseFormatter()
-            if search_results:
-                formatted_results = []
-                for result in search_results[:8]:  # Top 8 results
-                    formatted_results.append(result['display'])
-                    if result['matches']:
-                        formatted_results.append(f"  🎯 ตรงกับ: {', '.join(result['matches'][:3])}")
-                
-                result = formatter.format_search_results(formatted_results, ' '.join(search_terms))
-            else:
-                result = f"🔍 ไม่พบข้อมูลที่ตรงกับ \"{query}\"\n\n"
-                result += "💡 **คำแนะนำ:**\n"
-                result += "• ลองใช้คำค้นหาที่สั้นกว่า\n"
-                result += "• ตรวจสอบการสะกดคำ\n"
-                result += "• ใช้คำสั่ง 'headers' เพื่อดูคอลัมน์ที่มี\n"
-                result += "• ใช้คำสั่ง 'data' เพื่อดูข้อมูลตัวอย่าง"
-        
-        else:
-            # General query handling
-            smart_search_instance = SmartSearch()
-            result = smart_search_instance.smart_search(query, data, intent)
-        
-        # Remember interaction
-        context_found = bool(result and 'ไม่พบข้อมูล' not in result and 'ไม่สามารถเข้าถึงข้อมูล' not in result)
-        conversation_memory.add_interaction(query, result[:200], context_found)
-        
-        return result
-        
-    except Exception as e:
-        print(f"[DEBUG] Ultra enhanced search error: {e}")
-        import traceback
-        traceback.print_exc()
-        return f"เกิดข้อผิดพลาดในการค้นหา: {str(e)}"
-
-# Replace the original functions in your Flask app
-def get_google_sheet_data(sheet_id, range_name="A:Z"):
-    """Enhanced Google Sheets data fetching with caching"""
-    try:
-        # Check cache first (simple in-memory cache)
-        cache_key = f"{sheet_id}_{range_name}"
-        current_time = datetime.now()
-        
-        # Cache for 5 minutes
-        if hasattr(get_google_sheet_data, 'cache'):
-            cached_data, cached_time = get_google_sheet_data.cache.get(cache_key, (None, None))
-            if cached_data and cached_time and (current_time - cached_time).seconds < 300:
-                print(f"[DEBUG] Using cached Google Sheets data")
-                return cached_data
-        
-        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
-        print(f"[DEBUG] Fetching Google Sheet: {csv_url}")
-        
-        response = requests.get(csv_url, timeout=15)
-        print(f"[DEBUG] Google Sheets response status: {response.status_code}")
-        
-        if response.status_code == 200:
-            # Better CSV parsing
-            csv_data = StringIO(response.text)
-            reader = csv.reader(csv_data)
-            data = []
-            
-            for row_num, row in enumerate(reader):
-                # Clean empty rows
-                if any(cell.strip() for cell in row):
-                    data.append(row)
-                if row_num == 0:
-                    print(f"[DEBUG] Headers: {row}")
-            
-            print(f"[DEBUG] Successfully parsed {len(data)} rows from Google Sheets")
-            
-            # Cache the data
-            if not hasattr(get_google_sheet_data, 'cache'):
-                get_google_sheet_data.cache = {}
-            get_google_sheet_data.cache[cache_key] = (data, current_time)
-            
-            return data
-        else:
-            print(f"[DEBUG] Google Sheets error: HTTP {response.status_code}")
-            return None
-            
-    except Exception as e:
-        print(f"[DEBUG] Error fetching Google Sheets data: {e}")
-        return None
-
-# Updated chat endpoint to use ultra enhanced features
-@app.route('/api/ultra-chat', methods=['POST'])
-def ultra_chat():
-    """Ultra enhanced chat with all AI features"""
+@app.route('/api/admin-help', methods=['POST'])
+def admin_help():
     if not session.get('logged_in'):
         return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
     
     try:
         data = request.json
-        message = data.get('message', '').strip()
+        question = data.get('message', '')
         
-        if not message:
-            return jsonify({'error': 'กรุณาใส่ข้อความ'})
+        print(f"[DEBUG] Admin help request: '{question}'")
         
-        print(f"[DEBUG] Ultra chat message: '{message}'")
+        # Admin helper responses
+        help_responses = {
+            'การตั้งค่า': 'สำหรับการตั้งค่าระบบ: 1. ไปที่หน้า Settings 2. ใส่ System Prompt ที่ต้องการ 3. ใส่ Google Sheet ID 4. บันทึกการตั้งค่า',
+            'google sheet': 'การใช้งาน Google Sheets: 1. เตรียม Google Sheet ที่เป็น Public 2. คัดลอก Sheet ID จาก URL 3. ใส่ใน Settings 4. ทดสอบการค้นหา',
+            'ช่วย': 'คุณสามารถถามเกี่ยวกับ: การตั้งค่าระบบ, การใช้งาน Google Sheets, การใช้งาน Chatbot, การแก้ไขปัญหา, หรือพิมพ์ "คู่มือ" เพื่อดูคู่มือทั้งหมด',
+            'login': f'ข้อมูลการเข้าสู่ระบบ Default: Username: {DEFAULT_USER}, Password: {DEFAULT_PASSWORD}',
+            'คู่มือ': f'''คู่มือการใช้งาน Custom AI:
+
+🔐 การเข้าสู่ระบบ:
+- Username: {DEFAULT_USER}
+- Password: {DEFAULT_PASSWORD}
+- หรือใช้ข้อมูลจาก Google Sheet (ถ้ามี)
+
+📝 การเริ่มต้น:
+1. เข้าสู่ระบบด้วย admin/password
+2. ตั้งค่า System Prompt และ Google Sheet ID
+3. ทดสอบการทำงานของ Chatbot
+
+⚙️ การตั้งค่า:
+- System Prompt: คำสั่งให้ AI ทำงาน
+- Google Sheet ID: รหัส Google Sheet สำหรับค้นหาข้อมูล
+- API Tokens: สำหรับ Line/Telegram (ถ้ามี)
+
+💬 การใช้งาน Chat:
+- พิมพ์คำถามเพื่อค้นหาข้อมูลใน Google Sheet
+- AI จะค้นหาและตอบคำถามจากข้อมูลที่เจอ
+- สามารถถามได้หลากหลายรูปแบบ'''
+        }
         
-        # Ultra enhanced search
-        context = ultra_enhanced_search_sheet_data(message)
+        # Find best matching response
+        question_lower = question.lower()
+        response = f"ฉันพร้อมช่วยคุณ! ข้อมูลเข้าสู่ระบบ: {DEFAULT_USER}/{DEFAULT_PASSWORD} พิมพ์ 'ช่วย' เพื่อดูคำสั่งที่ใช้ได้ หรือ 'คู่มือ' เพื่อดูคู่มือทั้งหมด"
         
-        # Enhanced AI response (only if not a direct command response)
-        if not QuickCommands.is_command(message):
-            ai_response = enhanced_call_ai_model(message, context)
+        for key, value in help_responses.items():
+            if key in question_lower:
+                response = value
+                break
+        
+        return jsonify({'response': response})
+        
+    except Exception as e:
+        print(f"[DEBUG] Admin help error: {e}")
+        return jsonify({'error': 'เกิดข้อผิดพลาดในระบบช่วยเหลือ'}), 500
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+def settings():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    if request.method == 'POST':
+        try:
+            data = request.json
+            old_sheet_id = app_settings['google_sheet_id']
             
-            # Combine context and AI response intelligently
-            if context and len(context) > 100:
-                final_response = context  # Use processed data directly
-                if len(ai_response) > 50 and 'ข้อผิดพลาด' not in ai_response:
-                    final_response += f"\n\n🤖 **AI ช่วยเหลือ:**\n{ai_response}"
-            else:
-                final_response = ai_response
-        else:
-            final_response = context
+            app_settings.update({
+                'system_prompt': data.get('system_prompt', app_settings['system_prompt']),
+                'google_sheet_id': data.get('google_sheet_id', app_settings['google_sheet_id']),
+                'line_token': data.get('line_token', app_settings['line_token']),
+                'telegram_api': data.get('telegram_api', app_settings['telegram_api'])
+            })
+            
+            print(f"[DEBUG] Settings updated - Sheet ID changed from {old_sheet_id} to {app_settings['google_sheet_id']}")
+            
+            return jsonify({'success': True, 'message': 'บันทึกการตั้งค่าสำเร็จ'})
+        except Exception as e:
+            print(f"[DEBUG] Settings update error: {e}")
+            return jsonify({'success': False, 'message': 'เกิดข้อผิดพลาดในการบันทึก'})
+    
+    return jsonify(app_settings)
+
+@app.route('/api/test-connection', methods=['POST'])
+def test_connection():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        print("[DEBUG] Starting connection test...")
         
-        # Detect response type
-        intent = query_processor.detect_intent(message)
-        context_found = bool(context and 'ไม่พบข้อมูล' not in context)
+        # Test Google Sheets connection
+        print("[DEBUG] Testing Google Sheets connection...")
+        data = get_google_sheet_data(app_settings['google_sheet_id'])
+        sheets_status = bool(data)
+        sheets_details = f"Found {len(data)} rows" if data else "No data accessible"
         
-        # Add helpful suggestions
-        suggestions = []
-        if context_found:
-            suggestions = [
-                "วิเคราะห์ข้อมูลนี้เพิ่มเติม",
-                "แสดงข้อมูลในรูปแบบอื่น",
-                "เปรียบเทียบกับข้อมูลอื่น"
-            ]
-        else:
-            suggestions = [
-                "พิมพ์ 'help' เพื่อดูคำสั่งที่ใช้ได้",
-                "พิมพ์ 'data' เพื่อดูข้อมูลตัวอย่าง",
-                "พิมพ์ 'headers' เพื่อดูคอลัมน์ที่มี"
-            ]
+        # Test AI model connection
+        print("[DEBUG] Testing AI model connection...")
+        try:
+            test_response = requests.post(CHAT_API_URL, 
+                                        json={"model": CHAT_MODEL, "prompt": "test", "stream": False}, 
+                                        timeout=10)
+            ai_status = test_response.status_code == 200
+            ai_details = f"HTTP {test_response.status_code}"
+            if test_response.status_code == 200:
+                ai_result = test_response.json()
+                ai_details += f" - Response: {ai_result.get('response', 'No response')[:50]}..."
+        except Exception as e:
+            ai_status = False
+            ai_details = f"Error: {str(e)}"
         
-        response_data = {
-            'response': final_response,
-            'context_found': context_found,
-            'intent': intent,
-            'suggestions': suggestions,
-            'timestamp': datetime.now().isoformat(),
-            'stats': {
-                'conversation_count': len(conversation_memory.conversation_history),
-                'popular_queries_count': len(conversation_memory.frequent_queries)
+        result = {
+            'google_sheets': sheets_status,
+            'google_sheets_details': sheets_details,
+            'ai_model': ai_status,
+            'ai_model_details': ai_details,
+            'message': f"Google Sheets: {'✅ ' + sheets_details if sheets_status else '❌ ' + sheets_details}, AI Model: {'✅ ' + ai_details if ai_status else '❌ ' + ai_details}",
+            'debug_info': {
+                'sheet_id': app_settings['google_sheet_id'],
+                'sheet_url': f"https://docs.google.com/spreadsheets/d/{app_settings['google_sheet_id']}/export?format=csv&gid=0",
+                'ai_model': CHAT_MODEL,
+                'ai_url': CHAT_API_URL
             }
         }
         
-        print(f"[DEBUG] Ultra chat completed - Intent: {intent['intent']}, Context: {context_found}")
-        return jsonify(response_data)
+        print(f"[DEBUG] Connection test completed: Sheets={sheets_status}, AI={ai_status}")
+        return jsonify(result)
         
     except Exception as e:
-        print(f"[DEBUG] Ultra chat error: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': 'เกิดข้อผิดพลาดในการประมวลผล'}), 500
+        print(f"[DEBUG] Connection test error: {e}")
+        return jsonify({'error': f'เกิดข้อผิดพลาดในการทดสอบ: {str(e)}'}), 500
+
+# New endpoint for detailed Google Sheets testing
+@app.route('/api/test-sheet', methods=['POST'])
+def test_sheet():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    sheet_id = app_settings['google_sheet_id']
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+    
+    print(f"[DEBUG] Testing Google Sheet access: {sheet_id}")
+    
+    try:
+        response = requests.get(csv_url, timeout=10)
+        
+        result = {
+            'sheet_id': sheet_id,
+            'url': csv_url,
+            'status_code': response.status_code,
+            'success': response.status_code == 200,
+            'content_length': len(response.text) if response.status_code == 200 else 0,
+            'content_preview': response.text[:500] if response.status_code == 200 else None,
+            'error': None if response.status_code == 200 else f"HTTP {response.status_code}: {response.text[:200]}"
+        }
+        
+        if response.status_code == 200:
+            # Try to parse the CSV
+            try:
+                csv_data = StringIO(response.text)
+                reader = csv.reader(csv_data)
+                rows = list(reader)
+                result['parsed_rows'] = len(rows)
+                result['sample_data'] = rows[:3] if rows else []
+            except Exception as parse_error:
+                result['parse_error'] = str(parse_error)
+        
+        print(f"[DEBUG] Sheet test result: {result['success']}")
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"[DEBUG] Sheet test error: {e}")
+        return jsonify({
+            'sheet_id': sheet_id,
+            'url': csv_url,
+            'success': False,
+            'error': str(e)
+        })
+
+# New endpoint for directly viewing sheet data (for debugging)
+@app.route('/api/preview-data', methods=['POST'])
+def preview_data():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = request.json
+        num_rows = data.get('rows', 5)
+        
+        sheet_data = get_google_sheet_data(app_settings['google_sheet_id'])
+        
+        if not sheet_data:
+            return jsonify({
+                'success': False,
+                'error': 'ไม่สามารถเข้าถึง Google Sheet ได้'
+            })
+        
+        preview_rows = []
+        for i, row in enumerate(sheet_data[:num_rows]):
+            preview_rows.append({
+                'row_number': i + 1,
+                'data': row,
+                'display': f"แถวที่ {i+1}: {' | '.join(str(cell) for cell in row) if row else '(ว่าง)'}"
+            })
+        
+        return jsonify({
+            'success': True,
+            'total_rows': len(sheet_data),
+            'preview_rows': len(preview_rows),
+            'data': preview_rows,
+            'sheet_id': app_settings['google_sheet_id'],
+            'raw_sample': sheet_data[:3] if sheet_data else []
+        })
+        
+    except Exception as e:
+        print(f"[DEBUG] Preview data error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'เกิดข้อผิดพลาด: {str(e)}'
+        })
+
+# New endpoint for testing Unicode conversion
+@app.route('/api/test-unicode', methods=['POST'])
+def test_unicode():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = request.json
+        test_text = data.get('text', 'à¸à¸²à¸£à¹à¸à¹à¸à¸£à¸²à¸°')
+        
+        original = test_text
+        cleaned = clean_thai_text(test_text)
+        
+        # Test different decoding methods
+        methods = {}
+        
+        try:
+            methods['unicode_escape'] = test_text.encode().decode('unicode_escape')
+        except:
+            methods['unicode_escape'] = 'Failed'
+            
+        try:
+            methods['codecs_decode'] = codecs.decode(test_text, 'unicode_escape')
+        except:
+            methods['codecs_decode'] = 'Failed'
+            
+        try:
+            methods['utf8_decode'] = test_text.encode('latin1').decode('utf-8')
+        except:
+            methods['utf8_decode'] = 'Failed'
+        
+        return jsonify({
+            'original': original,
+            'cleaned': cleaned,
+            'methods': methods,
+            'success': True
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+# New endpoint for testing search functionality
+@app.route('/api/test-search', methods=['POST'])
+def test_search():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = request.json
+        query = data.get('query', '')
+        
+        if not query:
+            return jsonify({'error': 'กรุณาใส่คำค้นหา'})
+        
+        print(f"[DEBUG] Test search for: '{query}'")
+        
+        # Get raw sheet data
+        sheet_data = get_google_sheet_data(app_settings['google_sheet_id'])
+        
+        # Perform search
+        search_result = search_sheet_data(query)
+        
+        return jsonify({
+            'success': True,
+            'query': query,
+            'sheet_rows': len(sheet_data) if sheet_data else 0,
+            'search_result': search_result,
+            'sheet_preview': sheet_data[:3] if sheet_data else [],
+            'sheet_id': app_settings['google_sheet_id']
+        })
+        
+    except Exception as e:
+        print(f"[DEBUG] Test search error: {e}")
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'})
+
+# New endpoint for viewing sheet data
+@app.route('/api/view-sheet', methods=['POST'])
+def view_sheet():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = get_google_sheet_data(app_settings['google_sheet_id'])
+        
+        if not data:
+            return jsonify({'error': 'ไม่สามารถเข้าถึง Google Sheet ได้'})
+        
+        # Return first 10 rows for inspection
+        preview_data = []
+        for i, row in enumerate(data[:10]):
+            preview_data.append({
+                'row_number': i + 1,
+                'data': row,
+                'joined': ' | '.join(row) if row else ''
+            })
+        
+        return jsonify({
+            'success': True,
+            'total_rows': len(data),
+            'preview_rows': len(preview_data),
+            'data': preview_data,
+            'headers': data[0] if data else [],
+            'sheet_id': app_settings['google_sheet_id']
+        })
+        
+    except Exception as e:
+        print(f"[DEBUG] View sheet error: {e}")
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'})
 
 if __name__ == '__main__':
-    print("[DEBUG] Starting Ultra Enhanced AI Flask application...")
-    print(f"[DEBUG] Features enabled: Fuzzy Search, Analytics, Conversation Memory")
-    print(f"[DEBUG] Quick commands available: {list(QuickCommands.COMMANDS.keys())}")
+    print("[DEBUG] Starting Flask application...")
+    print(f"[DEBUG] Default Google Sheet ID: {DEFAULT_SHEET_ID}")
+    print(f"[DEBUG] AI Model: {CHAT_MODEL}")
+    print(f"[DEBUG] AI API URL: {CHAT_API_URL}")
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
