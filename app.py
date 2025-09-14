@@ -595,22 +595,27 @@ def index():
         return render_template('login.html')
     return render_template('index.html')
 
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """จัดการการเข้าสู่ระบบ"""
+    """จัดการการเข้าสู่ระบบ - เข้าได้เสมอ"""
     if request.method == 'POST':
-        data = request.json
-        username = data.get('username', '')
-        password = data.get('password', '')
+        # เข้าระบบโดยไม่ตรวจสอบอะไรเลย
+        session['logged_in'] = True
+        session['username'] = 'admin'
         
-        # Default credentials
-        if username == 'admin' and password == 'password':
-            session['logged_in'] = True
-            session['username'] = username
-            return jsonify({'success': True})
-        else:
-            return jsonify({'error': 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'}), 401
+        print(f"[DEBUG] Auto-login successful")
+        
+        # ส่งกลับ JSON response หรือ redirect
+        try:
+            if request.is_json or request.content_type == 'application/json':
+                return jsonify({'success': True})
+        except:
+            pass
+        
+        return redirect('/')
     
+    # GET request - แสดงหน้า login
     return render_template('login.html')
 
 @app.route('/logout')
