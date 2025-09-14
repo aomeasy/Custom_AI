@@ -238,6 +238,38 @@ def search_sheet_data(query):
         traceback.print_exc()
         return f"เกิดข้อผิดพลาดในการค้นหา: {str(e)}"
 
+def filter_ai_response(response):
+    """Filter out unwanted content from AI response"""
+    if not response:
+        return response
+    
+    # Remove thinking process tags and content
+    import re
+    
+    # Remove <think> tags and their content
+    response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Remove other common thinking patterns
+    thinking_patterns = [
+        r'<analysis>.*?</analysis>',
+        r'<reasoning>.*?</reasoning>',
+        r'<internal>.*?</internal>',
+        r'\*thinking\*.*?\*thinking\*',
+        r'\[thinking\].*?\[/thinking\]'
+    ]
+    
+    for pattern in thinking_patterns:
+        response = re.sub(pattern, '', response, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Clean up multiple newlines and spaces
+    response = re.sub(r'\n\s*\n\s*\n', '\n\n', response)
+    response = response.strip()
+    
+    # Ensure the response is not empty
+    if not response or response.isspace():
+        return "ขออภัย ไม่สามารถประมวลผลคำตอบได้ กรุณาลองใหม่อีกครั้ง"
+    
+    return response
 
 def call_ai_model(prompt, context=""):
     """Call the AI model with context and enhanced debugging"""
