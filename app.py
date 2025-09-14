@@ -418,6 +418,48 @@ def test_sheet():
             'error': str(e)
         })
 
+# New endpoint for directly viewing sheet data (for debugging)
+@app.route('/api/preview-data', methods=['POST'])
+def preview_data():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = request.json
+        num_rows = data.get('rows', 5)
+        
+        sheet_data = get_google_sheet_data(app_settings['google_sheet_id'])
+        
+        if not sheet_data:
+            return jsonify({
+                'success': False,
+                'error': 'ไม่สามารถเข้าถึง Google Sheet ได้'
+            })
+        
+        preview_rows = []
+        for i, row in enumerate(sheet_data[:num_rows]):
+            preview_rows.append({
+                'row_number': i + 1,
+                'data': row,
+                'display': f"แถวที่ {i+1}: {' | '.join(str(cell) for cell in row) if row else '(ว่าง)'}"
+            })
+        
+        return jsonify({
+            'success': True,
+            'total_rows': len(sheet_data),
+            'preview_rows': len(preview_rows),
+            'data': preview_rows,
+            'sheet_id': app_settings['google_sheet_id'],
+            'raw_sample': sheet_data[:3] if sheet_data else []
+        })
+        
+    except Exception as e:
+        print(f"[DEBUG] Preview data error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'เกิดข้อผิดพลาด: {str(e)}'
+        })
+
 # New endpoint for testing Unicode conversion
 @app.route('/api/test-unicode', methods=['POST'])
 def test_unicode():
