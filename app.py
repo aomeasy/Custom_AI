@@ -91,7 +91,7 @@ def authenticate_user(username, password):
         return username == DEFAULT_USER and password == DEFAULT_PASSWORD
 
 def search_sheet_data(query):
-    """Search for relevant data in Google Sheets with enhanced debugging"""
+    """Search for relevant data in Google Sheets with enhanced pattern matching"""
     try:
         print(f"[DEBUG] Searching Google Sheets for query: '{query}'")
         data = get_google_sheet_data(app_settings['google_sheet_id'])
@@ -102,20 +102,58 @@ def search_sheet_data(query):
         
         print(f"[DEBUG] Searching through {len(data)} rows")
         
-        # Simple search through all cells
-        relevant_data = []
         query_lower = query.lower()
+        
+        # Check for common data viewing patterns
+        show_data_patterns = [
+            'ขอดูข้อมูล', 'แสดงข้อมูล', 'ดูข้อมูล', 'แสดง', 'ดู',
+            'แถวแรก', 'แถว', 'รายการ', 'ข้อมูลทั้งหมด',
+            'show data', 'display data', 'view data', 'first rows'
+        ]
+        
+        # Check if user wants to view data
+        is_data_request = any(pattern in query_lower for pattern in show_data_patterns)
+        
+        # Extract number of rows if specified
+        import re
+        numbers = re.findall(r'\d+', query)
+        requested_rows = int(numbers[0]) if numbers else 5
+        
+        if is_data_request:
+            # Return first N rows of data
+            print(f"[DEBUG] Detected data viewing request for {requested_rows} rows")
+            result_rows = []
+            
+            # Limit to reasonable number
+            max_rows = min(requested_rows, 10, len(data))
+            
+            for i in range(max_rows):
+                if i < len(data) and data[i]:
+                    row_display = ' | '.join([str(cell) for cell in data[i] if cell])
+                    result_rows.append(f"แถวที่ {i + 1}: {row_display}")
+            
+            if result_rows:
+                result = "\n".join(result_rows)
+                print(f"[DEBUG] Returning {len(result_rows)} rows of data")
+                return result
+            else:
+                return "ไม่พบข้อมูลใน Google Sheets"
+        
+        # Original search functionality for specific content
+        relevant_data = []
         
         for row_idx, row in enumerate(data):
             for col_idx, cell in enumerate(row):
-                if cell and query_lower in cell.lower():
-                    relevant_data.append(f"แถวที่ {row_idx + 1}: {' | '.join(row)}")
+                if cell and query_lower in str(cell).lower():
+                    relevant_data.append(f"แถวที่ {row_idx + 1}: {' | '.join([str(c) for c in row if c])}")
                     print(f"[DEBUG] Match found at row {row_idx + 1}, col {col_idx + 1}: {cell}")
         
         print(f"[DEBUG] Found {len(relevant_data)} matches")
         
         if relevant_data:
-            result = "\n".join(relevant_data[:5])  # Return top 5 matches
+            # Remove duplicates and return top 5 matches
+            unique_data = list(dict.fromkeys(relevant_data))
+            result = "\n".join(unique_data[:5])
             print(f"[DEBUG] Returning search results: {result[:200]}...")
             return result
         else:
@@ -127,6 +165,53 @@ def search_sheet_data(query):
         import traceback
         traceback.print_exc()
         return f"เกิดข้อผิดพลาดในการค้นหา: {str(e)}"
+
+
+def call_ai_model(prompt, context=""):
+    """Call the AI model with context and enhanced debugging"""
+    try:
+        # Enhanced system prompt to handle data viewing requests better
+        enhanced_system_prompt = f"""{app_settings['system_prompt']}
+
+คำแนะนำเพิ่มเติม:
+- เมื่อผู้ใช้ถามขอดูข้อมูล แสดงข้อมูล หรือคำถามคล้ายกัน ให้แสดงข้อมูลที่มีใน Context
+- หากมีข้อมูลใน Context แล้ว ไม่ต้องบอกว่า "ไม่พบข้อมูล"
+- จัดรูปแบบข้อมูลให้อ่านง่าย เช่น ใส่หัวข้อ หรือจัดเรียงเป็นตาราง
+- หาก Context มีข้อมูล ให้ตอบจากข้อมูลนั้นเสมอ"""
+        
+        full_prompt = f"{enhanced_system_prompt}\n\nContext from Google Sheets:\n{context}\n\nUser question: {prompt}"
+        
+        payload = {
+            "model": CHAT_MODEL,
+            "prompt": full_prompt,
+            "stream": False
+        }
+        
+        print(f"[DEBUG] Calling AI model: {CHAT_MODEL}")
+        print(f"[DEBUG] API URL: {CHAT_API_URL}")
+        print(f"[DEBUG] Prompt length: {len(full_prompt)} characters")
+        print(f"[DEBUG] Context preview: {context[:200]}...")
+        
+        response = requests.post(CHAT_API_URL, json=payload, timeout=30)
+        
+        print(f"[DEBUG] AI response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result.get('response', 'ไม่สามารถสร้างคำตอบได้')
+            print(f"[DEBUG] AI response length: {len(ai_response)} characters")
+            print(f"[DEBUG] AI response preview: {ai_response[:200]}...")
+            return ai_response
+        else:
+            error_msg = f"HTTP {response.status_code}: {response.text}"
+            print(f"[DEBUG] AI error: {error_msg}")
+            return "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ AI"
+            
+    except Exception as e:
+        print(f"[DEBUG] AI Model error: {e}")
+        import traceback
+        traceback.print_exc()
+        return "เกิดข้อผิดพลาดในการประมวลผล โปรดลองใหม่อีกครั้ง"
 
 def call_ai_model(prompt, context=""):
     """Call the AI model with context and enhanced debugging"""
