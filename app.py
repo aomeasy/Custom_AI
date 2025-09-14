@@ -24,7 +24,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 # Enhanced Configuration
 CHAT_API_URL = "http://209.15.123.47:11434/api/generate"
 CHAT_MODEL = "Qwen3:14b"
-DEFAULT_SHEET_ID = "1_YcWW9AWew9afLVk08Tl5lN4iQMhxiQDz4qU3LsB-iE"
+DEFAULT_SHEET_ID = "1ixUmFKZpub5x6WYtV8pwYU892uQPDlVtjGlxpiEBJNs"
 
 # AI Intelligence Enhancement Classes
 class QueryProcessor:
