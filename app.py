@@ -418,6 +418,40 @@ def test_sheet():
             'error': str(e)
         })
 
+# New endpoint for viewing sheet data
+@app.route('/api/view-sheet', methods=['POST'])
+def view_sheet():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = get_google_sheet_data(app_settings['google_sheet_id'])
+        
+        if not data:
+            return jsonify({'error': 'ไม่สามารถเข้าถึง Google Sheet ได้'})
+        
+        # Return first 10 rows for inspection
+        preview_data = []
+        for i, row in enumerate(data[:10]):
+            preview_data.append({
+                'row_number': i + 1,
+                'data': row,
+                'joined': ' | '.join(row) if row else ''
+            })
+        
+        return jsonify({
+            'success': True,
+            'total_rows': len(data),
+            'preview_rows': len(preview_data),
+            'data': preview_data,
+            'headers': data[0] if data else [],
+            'sheet_id': app_settings['google_sheet_id']
+        })
+        
+    except Exception as e:
+        print(f"[DEBUG] View sheet error: {e}")
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'})
+
 if __name__ == '__main__':
     print("[DEBUG] Starting Flask application...")
     print(f"[DEBUG] Default Google Sheet ID: {DEFAULT_SHEET_ID}")
