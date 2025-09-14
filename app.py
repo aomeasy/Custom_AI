@@ -588,6 +588,11 @@ def post_process_response(response, context):
         return response
 
 # Enhanced API endpoints
+@app.route('/')
+def index():
+    """หน้าแรกของแอปพลิเคชัน"""
+    return render_template('index.html')
+    
 @app.route('/api/enhanced-chat', methods=['POST'])
 def enhanced_chat():
     """Enhanced chat endpoint with AI intelligence"""
