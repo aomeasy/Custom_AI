@@ -4,6 +4,8 @@ import json
 import os
 from datetime import datetime
 import re
+import csv
+from io import StringIO
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -26,22 +28,40 @@ app_settings = {
 }
 
 def get_google_sheet_data(sheet_id, range_name="A:Z"):
-    """Fetch data from Google Sheets"""
+    """Fetch data from Google Sheets with improved error handling"""
     try:
         # Using public Google Sheets CSV export
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+        print(f"[DEBUG] Fetching Google Sheet: {csv_url}")
+        
         response = requests.get(csv_url, timeout=10)
+        print(f"[DEBUG] Google Sheets response status: {response.status_code}")
         
         if response.status_code == 200:
-            lines = response.text.strip().split('\n')
+            print(f"[DEBUG] Raw CSV response length: {len(response.text)} characters")
+            print(f"[DEBUG] CSV preview: {response.text[:200]}...")
+            
+            # Better CSV parsing using csv module
+            csv_data = StringIO(response.text)
+            reader = csv.reader(csv_data)
             data = []
-            for line in lines:
-                row = [cell.strip('"') for cell in line.split(',')]
+            
+            for row_num, row in enumerate(reader):
                 data.append(row)
+                if row_num < 3:  # Show first 3 rows for debugging
+                    print(f"[DEBUG] Row {row_num + 1}: {row}")
+            
+            print(f"[DEBUG] Successfully parsed {len(data)} rows from Google Sheets")
             return data
-        return None
+        else:
+            print(f"[DEBUG] Google Sheets error: HTTP {response.status_code}")
+            print(f"[DEBUG] Error response: {response.text[:500]}")
+            return None
+            
     except Exception as e:
-        print(f"Error fetching Google Sheets data: {e}")
+        print(f"[DEBUG] Error fetching Google Sheets data: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def authenticate_user(username, password):
@@ -49,27 +69,38 @@ def authenticate_user(username, password):
     try:
         # Check default credentials first
         if username == DEFAULT_USER and password == DEFAULT_PASSWORD:
+            print(f"[DEBUG] User authenticated with default credentials: {username}")
             return True
         
         # Then check Google Sheets
+        print(f"[DEBUG] Checking Google Sheets for user: {username}")
         data = get_google_sheet_data(app_settings['google_sheet_id'])
         if data and len(data) > 1:  # Check if we have data beyond headers
+            print(f"[DEBUG] Searching through {len(data)} rows for user credentials")
             # Look for user in A2, B2 or scan through the sheet
             for i, row in enumerate(data[1:], 1):  # Skip header row
                 if len(row) >= 2 and row[0] == username and row[1] == password:
+                    print(f"[DEBUG] User found in Google Sheets at row {i + 1}")
                     return True
+        
+        print(f"[DEBUG] User authentication failed: {username}")
         return False
     except Exception as e:
-        print(f"Authentication error: {e}")
+        print(f"[DEBUG] Authentication error: {e}")
         # If Google Sheets fails, still allow default login
         return username == DEFAULT_USER and password == DEFAULT_PASSWORD
 
 def search_sheet_data(query):
-    """Search for relevant data in Google Sheets"""
+    """Search for relevant data in Google Sheets with enhanced debugging"""
     try:
+        print(f"[DEBUG] Searching Google Sheets for query: '{query}'")
         data = get_google_sheet_data(app_settings['google_sheet_id'])
+        
         if not data:
+            print("[DEBUG] No data returned from Google Sheets")
             return "ไม่สามารถเข้าถึงข้อมูลได้ในขณะนี้"
+        
+        print(f"[DEBUG] Searching through {len(data)} rows")
         
         # Simple search through all cells
         relevant_data = []
@@ -79,17 +110,26 @@ def search_sheet_data(query):
             for col_idx, cell in enumerate(row):
                 if cell and query_lower in cell.lower():
                     relevant_data.append(f"แถวที่ {row_idx + 1}: {' | '.join(row)}")
+                    print(f"[DEBUG] Match found at row {row_idx + 1}, col {col_idx + 1}: {cell}")
+        
+        print(f"[DEBUG] Found {len(relevant_data)} matches")
         
         if relevant_data:
-            return "\n".join(relevant_data[:5])  # Return top 5 matches
+            result = "\n".join(relevant_data[:5])  # Return top 5 matches
+            print(f"[DEBUG] Returning search results: {result[:200]}...")
+            return result
         else:
+            print("[DEBUG] No matches found in search")
             return "ไม่พบข้อมูลที่ตรงกับคำค้นหา"
             
     except Exception as e:
+        print(f"[DEBUG] Search error: {e}")
+        import traceback
+        traceback.print_exc()
         return f"เกิดข้อผิดพลาดในการค้นหา: {str(e)}"
 
 def call_ai_model(prompt, context=""):
-    """Call the AI model with context"""
+    """Call the AI model with context and enhanced debugging"""
     try:
         full_prompt = f"{app_settings['system_prompt']}\n\nContext from Google Sheets:\n{context}\n\nUser question: {prompt}"
         
@@ -99,16 +139,30 @@ def call_ai_model(prompt, context=""):
             "stream": False
         }
         
+        print(f"[DEBUG] Calling AI model: {CHAT_MODEL}")
+        print(f"[DEBUG] API URL: {CHAT_API_URL}")
+        print(f"[DEBUG] Prompt length: {len(full_prompt)} characters")
+        print(f"[DEBUG] Context preview: {context[:200]}...")
+        
         response = requests.post(CHAT_API_URL, json=payload, timeout=30)
+        
+        print(f"[DEBUG] AI response status: {response.status_code}")
         
         if response.status_code == 200:
             result = response.json()
-            return result.get('response', 'ไม่สามารถสร้างคำตอบได้')
+            ai_response = result.get('response', 'ไม่สามารถสร้างคำตอบได้')
+            print(f"[DEBUG] AI response length: {len(ai_response)} characters")
+            print(f"[DEBUG] AI response preview: {ai_response[:200]}...")
+            return ai_response
         else:
+            error_msg = f"HTTP {response.status_code}: {response.text}"
+            print(f"[DEBUG] AI error: {error_msg}")
             return "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ AI"
             
     except Exception as e:
-        print(f"AI Model error: {e}")
+        print(f"[DEBUG] AI Model error: {e}")
+        import traceback
+        traceback.print_exc()
         return "เกิดข้อผิดพลาดในการประมวลผล โปรดลองใหม่อีกครั้ง"
 
 @app.route('/')
@@ -122,19 +176,26 @@ def login():
         username = data.get('username')
         password = data.get('password')
         
+        print(f"[DEBUG] Login attempt for user: {username}")
+        
         if authenticate_user(username, password):
             session['logged_in'] = True
             session['username'] = username
+            print(f"[DEBUG] Login successful for user: {username}")
             return jsonify({'success': True, 'message': 'เข้าสู่ระบบสำเร็จ'})
         else:
+            print(f"[DEBUG] Login failed for user: {username}")
             return jsonify({'success': False, 'message': 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'})
             
     except Exception as e:
+        print(f"[DEBUG] Login error: {e}")
         return jsonify({'success': False, 'message': 'เกิดข้อผิดพลาดในระบบ'})
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
+    username = session.get('username', 'unknown')
     session.clear()
+    print(f"[DEBUG] User logged out: {username}")
     return jsonify({'success': True, 'message': 'ออกจากระบบสำเร็จ'})
 
 @app.route('/api/chat', methods=['POST'])
@@ -146,22 +207,37 @@ def chat():
         data = request.json
         message = data.get('message', '')
         
+        print(f"[DEBUG] Chat message received: '{message}'")
+        
         if not message:
             return jsonify({'error': 'กรุณาใส่ข้อความ'})
         
         # Search for relevant context in Google Sheets
+        print("[DEBUG] Starting Google Sheets search...")
         context = search_sheet_data(message)
         
         # Get AI response
+        print("[DEBUG] Starting AI model call...")
         ai_response = call_ai_model(message, context)
+        
+        context_found = bool(context and 'ไม่พบข้อมูล' not in context and 'ไม่สามารถเข้าถึงข้อมูล' not in context)
+        
+        print(f"[DEBUG] Chat response completed - Context found: {context_found}")
         
         return jsonify({
             'response': ai_response,
-            'context_found': bool(context and 'ไม่พบข้อมูล' not in context),
-            'timestamp': datetime.now().isoformat()
+            'context_found': context_found,
+            'timestamp': datetime.now().isoformat(),
+            'debug_info': {
+                'context_preview': context[:100] + '...' if len(context) > 100 else context,
+                'sheet_id': app_settings['google_sheet_id']
+            }
         })
         
     except Exception as e:
+        print(f"[DEBUG] Chat error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'เกิดข้อผิดพลาดในการประมวลผล'}), 500
 
 @app.route('/api/admin-help', methods=['POST'])
@@ -172,6 +248,8 @@ def admin_help():
     try:
         data = request.json
         question = data.get('message', '')
+        
+        print(f"[DEBUG] Admin help request: '{question}'")
         
         # Admin helper responses
         help_responses = {
@@ -214,6 +292,7 @@ def admin_help():
         return jsonify({'response': response})
         
     except Exception as e:
+        print(f"[DEBUG] Admin help error: {e}")
         return jsonify({'error': 'เกิดข้อผิดพลาดในระบบช่วยเหลือ'}), 500
 
 @app.route('/api/settings', methods=['GET', 'POST'])
@@ -224,14 +303,20 @@ def settings():
     if request.method == 'POST':
         try:
             data = request.json
+            old_sheet_id = app_settings['google_sheet_id']
+            
             app_settings.update({
                 'system_prompt': data.get('system_prompt', app_settings['system_prompt']),
                 'google_sheet_id': data.get('google_sheet_id', app_settings['google_sheet_id']),
                 'line_token': data.get('line_token', app_settings['line_token']),
                 'telegram_api': data.get('telegram_api', app_settings['telegram_api'])
             })
+            
+            print(f"[DEBUG] Settings updated - Sheet ID changed from {old_sheet_id} to {app_settings['google_sheet_id']}")
+            
             return jsonify({'success': True, 'message': 'บันทึกการตั้งค่าสำเร็จ'})
         except Exception as e:
+            print(f"[DEBUG] Settings update error: {e}")
             return jsonify({'success': False, 'message': 'เกิดข้อผิดพลาดในการบันทึก'})
     
     return jsonify(app_settings)
@@ -242,24 +327,100 @@ def test_connection():
         return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
     
     try:
+        print("[DEBUG] Starting connection test...")
+        
         # Test Google Sheets connection
+        print("[DEBUG] Testing Google Sheets connection...")
         data = get_google_sheet_data(app_settings['google_sheet_id'])
         sheets_status = bool(data)
+        sheets_details = f"Found {len(data)} rows" if data else "No data accessible"
         
         # Test AI model connection
-        test_response = requests.post(CHAT_API_URL, 
-                                    json={"model": CHAT_MODEL, "prompt": "test", "stream": False}, 
-                                    timeout=10)
-        ai_status = test_response.status_code == 200
+        print("[DEBUG] Testing AI model connection...")
+        try:
+            test_response = requests.post(CHAT_API_URL, 
+                                        json={"model": CHAT_MODEL, "prompt": "test", "stream": False}, 
+                                        timeout=10)
+            ai_status = test_response.status_code == 200
+            ai_details = f"HTTP {test_response.status_code}"
+            if test_response.status_code == 200:
+                ai_result = test_response.json()
+                ai_details += f" - Response: {ai_result.get('response', 'No response')[:50]}..."
+        except Exception as e:
+            ai_status = False
+            ai_details = f"Error: {str(e)}"
         
-        return jsonify({
+        result = {
             'google_sheets': sheets_status,
+            'google_sheets_details': sheets_details,
             'ai_model': ai_status,
-            'message': f"Google Sheets: {'✅' if sheets_status else '❌'}, AI Model: {'✅' if ai_status else '❌'}"
-        })
+            'ai_model_details': ai_details,
+            'message': f"Google Sheets: {'✅ ' + sheets_details if sheets_status else '❌ ' + sheets_details}, AI Model: {'✅ ' + ai_details if ai_status else '❌ ' + ai_details}",
+            'debug_info': {
+                'sheet_id': app_settings['google_sheet_id'],
+                'sheet_url': f"https://docs.google.com/spreadsheets/d/{app_settings['google_sheet_id']}/export?format=csv&gid=0",
+                'ai_model': CHAT_MODEL,
+                'ai_url': CHAT_API_URL
+            }
+        }
+        
+        print(f"[DEBUG] Connection test completed: Sheets={sheets_status}, AI={ai_status}")
+        return jsonify(result)
         
     except Exception as e:
+        print(f"[DEBUG] Connection test error: {e}")
         return jsonify({'error': f'เกิดข้อผิดพลาดในการทดสอบ: {str(e)}'}), 500
 
+# New endpoint for detailed Google Sheets testing
+@app.route('/api/test-sheet', methods=['POST'])
+def test_sheet():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    sheet_id = app_settings['google_sheet_id']
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+    
+    print(f"[DEBUG] Testing Google Sheet access: {sheet_id}")
+    
+    try:
+        response = requests.get(csv_url, timeout=10)
+        
+        result = {
+            'sheet_id': sheet_id,
+            'url': csv_url,
+            'status_code': response.status_code,
+            'success': response.status_code == 200,
+            'content_length': len(response.text) if response.status_code == 200 else 0,
+            'content_preview': response.text[:500] if response.status_code == 200 else None,
+            'error': None if response.status_code == 200 else f"HTTP {response.status_code}: {response.text[:200]}"
+        }
+        
+        if response.status_code == 200:
+            # Try to parse the CSV
+            try:
+                csv_data = StringIO(response.text)
+                reader = csv.reader(csv_data)
+                rows = list(reader)
+                result['parsed_rows'] = len(rows)
+                result['sample_data'] = rows[:3] if rows else []
+            except Exception as parse_error:
+                result['parse_error'] = str(parse_error)
+        
+        print(f"[DEBUG] Sheet test result: {result['success']}")
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"[DEBUG] Sheet test error: {e}")
+        return jsonify({
+            'sheet_id': sheet_id,
+            'url': csv_url,
+            'success': False,
+            'error': str(e)
+        })
+
 if __name__ == '__main__':
+    print("[DEBUG] Starting Flask application...")
+    print(f"[DEBUG] Default Google Sheet ID: {DEFAULT_SHEET_ID}")
+    print(f"[DEBUG] AI Model: {CHAT_MODEL}")
+    print(f"[DEBUG] AI API URL: {CHAT_API_URL}")
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
