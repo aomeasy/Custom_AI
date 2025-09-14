@@ -379,4 +379,400 @@ function clearChatMessages() {
     
     document.getElementById('admin-messages').innerHTML = `
         <div class="chat-message bot">
-            <div
+            <div class="flex items-start space-x-2">
+                <div class="w-6 h-6 bg-gradient-to-r from-green-400 to-teal-500 rounded-full flex items-center justify-center">
+                    <i data-lucide="help-circle" class="w-3 h-3 text-white"></i>
+                </div>
+                <div class="bg-green-50 rounded-lg p-3 text-sm max-w-xs">
+                    <p>สวัสดี! ฉันเป็น Admin Helper พร้อมช่วยเหลือคุณในการใช้งาน พิมพ์ "ช่วย" เพื่อดูคำสั่งที่ใช้ได้</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    lucide.createIcons();
+}
+
+// Settings Management
+async function loadSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('system-prompt').value = settings.system_prompt || '';
+            document.getElementById('google-sheet-id').value = settings.google_sheet_id || '';
+            document.getElementById('line-token').value = settings.line_token || '';
+            document.getElementById('telegram-api').value = settings.telegram_api || '';
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+}
+
+async function handleSettings(e) {
+    e.preventDefault();
+    
+    const settings = {
+        system_prompt: document.getElementById('system-prompt').value,
+        google_sheet_id: document.getElementById('google-sheet-id').value,
+        line_token: document.getElementById('line-token').value,
+        telegram_api: document.getElementById('telegram-api').value
+    };
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(result.message, 'success');
+        } else {
+            showToast(result.message || 'เกิดข้อผิดพลาดในการบันทึก', 'error');
+        }
+    } catch (error) {
+        console.error('Settings error:', error);
+        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function testConnection() {
+    const connectionStatus = document.getElementById('connection-status');
+    const sheetsStatus = document.getElementById('sheets-status');
+    const aiStatus = document.getElementById('ai-status');
+    
+    // Show status panel
+    connectionStatus.classList.remove('hidden');
+    
+    // Reset status
+    sheetsStatus.innerHTML = 'Google Sheets: <span class="loading">กำลังทดสอบ...</span>';
+    aiStatus.innerHTML = 'AI Model: <span class="loading">กำลังทดสอบ...</span>';
+    
+    try {
+        const response = await fetch('/api/test-connection', {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Update status indicators
+            sheetsStatus.innerHTML = `Google Sheets: <span class="${result.google_sheets ? 'status-online' : 'status-offline'}">${result.google_sheets ? '✅ เชื่อมต่อสำเร็จ' : '❌ ไม่สามารถเชื่อมต่อได้'}</span>`;
+            aiStatus.innerHTML = `AI Model: <span class="${result.ai_model ? 'status-online' : 'status-offline'}">${result.ai_model ? '✅ เชื่อมต่อสำเร็จ' : '❌ ไม่สามารถเชื่อมต่อได้'}</span>`;
+            
+            showToast(result.message, result.google_sheets && result.ai_model ? 'success' : 'error');
+        } else {
+            sheetsStatus.innerHTML = 'Google Sheets: <span class="status-offline">❌ ไม่สามารถทดสอบได้</span>';
+            aiStatus.innerHTML = 'AI Model: <span class="status-offline">❌ ไม่สามารถทดสอบได้</span>';
+            showToast(result.error || 'เกิดข้อผิดพลาดในการทดสอบ', 'error');
+        }
+    } catch (error) {
+        console.error('Connection test error:', error);
+        sheetsStatus.innerHTML = 'Google Sheets: <span class="status-offline">❌ เกิดข้อผิดพลาด</span>';
+        aiStatus.innerHTML = 'AI Model: <span class="status-offline">❌ เกิดข้อผิดพลาด</span>';
+        showToast('เกิดข้อผิดพลาดในการทดสอบการเชื่อมต่อ', 'error');
+    }
+}
+
+// Utility Functions
+function showLoading(show) {
+    const loading = document.getElementById('loading');
+    if (show) {
+        loading.classList.remove('hidden');
+    } else {
+        loading.classList.add('hidden');
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toast-message');
+    const toastIcon = document.getElementById('toast-icon');
+    
+    // Set message
+    toastMessage.textContent = message;
+    
+    // Set type and icon
+    toast.className = `fixed top-20 right-4 glass-card p-4 transform transition-transform z-50 toast-${type}`;
+    
+    let iconName = 'info';
+    switch (type) {
+        case 'success':
+            iconName = 'check';
+            break;
+        case 'error':
+            iconName = 'x';
+            break;
+        case 'info':
+        default:
+            iconName = 'info';
+            break;
+    }
+    
+    toastIcon.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4 text-white"></i>`;
+    
+    // Show toast
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Hide toast after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+    }, 3000);
+    
+    // Re-initialize icons
+    lucide.createIcons();
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// Mobile Navigation Toggle (for future mobile menu)
+function toggleMobileMenu() {
+    const navMenu = document.getElementById('nav-menu');
+    navMenu.classList.toggle('hidden');
+}
+
+// Keyboard Shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl/Cmd + / to focus chat input
+    if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput && !chatInput.disabled) {
+            chatInput.focus();
+        }
+    }
+    
+    // Escape to clear current input
+    if (e.key === 'Escape') {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.id === 'chat-input' || activeElement.id === 'admin-input')) {
+            activeElement.value = '';
+            activeElement.blur();
+        }
+    }
+});
+
+// Auto-save settings on input change (debounced)
+let settingsTimeout;
+function autoSaveSettings() {
+    clearTimeout(settingsTimeout);
+    settingsTimeout = setTimeout(() => {
+        const settingsForm = document.getElementById('settings-form');
+        if (settingsForm && document.getElementById('settings-page').classList.contains('active')) {
+            // Only auto-save if we're on the settings page
+            handleSettings(new Event('submit'));
+        }
+    }, 2000);
+}
+
+// Bind auto-save to settings inputs
+document.addEventListener('DOMContentLoaded', function() {
+    const settingsInputs = ['system-prompt', 'google-sheet-id', 'line-token', 'telegram-api'];
+    settingsInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', autoSaveSettings);
+        }
+    });
+});
+
+// Handle connection errors gracefully
+window.addEventListener('online', function() {
+    showToast('เชื่อมต่ออินเทอร์เน็ตแล้ว', 'success');
+});
+
+window.addEventListener('offline', function() {
+    showToast('ไม่มีการเชื่อมต่ออินเทอร์เน็ต', 'error');
+});
+
+// Performance optimization - lazy load chat history
+function optimizeChatDisplay() {
+    const chatMessages = document.getElementById('chat-messages');
+    const messages = chatMessages.querySelectorAll('.chat-message');
+    
+    // Only show last 50 messages for performance
+    if (messages.length > 50) {
+        for (let i = 0; i < messages.length - 50; i++) {
+            messages[i].style.display = 'none';
+        }
+    }
+}
+
+// Call optimization periodically
+setInterval(optimizeChatDisplay, 30000); // Every 30 seconds
+
+// Export functions for global access
+window.showPage = showPage;
+window.logout = logout;
+window.initApp = initApp;
+
+// Webhook Management Functions
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    element.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    showToast('คัดลอกแล้ว!', 'success');
+}
+
+async function setupLineWebhook() {
+    try {
+        const webhookUrl = document.getElementById('line-webhook-url').value;
+        if (!webhookUrl) {
+            showToast('กรุณา Deploy เว็บก่อนเพื่อรับ Webhook URL', 'error');
+            return;
+        }
+
+        showLoading(true);
+        const response = await fetch('/api/setup-line-webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ webhook_url: webhookUrl })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('กรุณาตั้งค่า URL นี้ใน LINE Developer Console', 'info');
+        } else {
+            showToast(result.error || 'เกิดข้อผิดพลาด', 'error');
+        }
+    } catch (error) {
+        console.error('LINE webhook setup error:', error);
+        showToast('เกิดข้อผิดพลาดในการตั้งค่า LINE Webhook', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function setupTelegramWebhook() {
+    try {
+        const webhookUrl = document.getElementById('telegram-webhook-url').value;
+        if (!webhookUrl) {
+            showToast('กรุณา Deploy เว็บก่อนเพื่อรับ Webhook URL', 'error');
+            return;
+        }
+
+        showLoading(true);
+        const response = await fetch('/api/setup-telegram-webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ webhook_url: webhookUrl })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(result.message, 'success');
+        } else {
+            showToast(result.error || 'เกิดข้อผิดพลาด', 'error');
+        }
+    } catch (error) {
+        console.error('Telegram webhook setup error:', error);
+        showToast('เกิดข้อผิดพลาดในการตั้งค่า Telegram Webhook', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function testLineIntegration() {
+    try {
+        showLoading(true);
+        const response = await fetch('/api/test-line', {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('การเชื่อมต่อ LINE API สำเร็จ!', 'success');
+            console.log('LINE Bot Info:', result.bot_info);
+        } else {
+            showToast(result.error || 'การเชื่อมต่อ LINE ล้มเหลว', 'error');
+        }
+    } catch (error) {
+        console.error('LINE test error:', error);
+        showToast('เกิดข้อผิดพลาดในการทดสอบ LINE', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function testTelegramIntegration() {
+    try {
+        showLoading(true);
+        const response = await fetch('/api/test-telegram', {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('การเชื่อมต่อ Telegram API สำเร็จ!', 'success');
+            console.log('Telegram Bot Info:', result.bot_info);
+        } else {
+            showToast(result.error || 'การเชื่อมต่อ Telegram ล้มเหลว', 'error');
+        }
+    } catch (error) {
+        console.error('Telegram test error:', error);
+        showToast('เกิดข้อผิดพลาดในการทดสอบ Telegram', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Initialize webhook URLs when page loads
+function initializeWebhookUrls() {
+    const currentHost = window.location.origin;
+    const lineWebhookInput = document.getElementById('line-webhook-url');
+    const telegramWebhookInput = document.getElementById('telegram-webhook-url');
+    
+    if (lineWebhookInput && currentHost !== 'null') {
+        lineWebhookInput.value = `${currentHost}/webhook/line`;
+    }
+    
+    if (telegramWebhookInput && currentHost !== 'null') {
+        telegramWebhookInput.value = `${currentHost}/webhook/telegram`;
+    }
+}
+
+// Add webhook URL initialization to the existing initApp function
+const originalInitApp = window.initApp;
+window.initApp = function() {
+    if (originalInitApp) {
+        originalInitApp();
+    }
+    
+    // Initialize webhook URLs
+    setTimeout(initializeWebhookUrls, 100);
+    
+    // Add webhook functions to global scope
+    window.copyToClipboard = copyToClipboard;
+    window.setupLineWebhook = setupLineWebhook;
+    window.setupTelegramWebhook = setupTelegramWebhook;
+    window.testLineIntegration = testLineIntegration;
+    window.testTelegramIntegration = testTelegramIntegration;
+};
