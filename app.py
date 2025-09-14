@@ -13,6 +13,10 @@ CHAT_API_URL = "http://209.15.123.47:11434/api/generate"
 CHAT_MODEL = "Qwen3:14b"
 DEFAULT_SHEET_ID = "1_YcWW9AWew9afLVk08Tl5lN4iQMhxiQDz4qU3LsB-iE"
 
+# Default login credentials
+DEFAULT_USER = "admin"
+DEFAULT_PASSWORD = "password"
+
 # In-memory storage (for demo purposes - in production use database)
 app_settings = {
     'system_prompt': 'คุณเป็น AI Assistant ที่ช่วยค้นหาข้อมูลจาก Google Sheets อย่างชาญฉลาด ตอบคำถามด้วยความเป็นมิตรและให้ข้อมูลที่ถูกต้อง',
@@ -41,8 +45,13 @@ def get_google_sheet_data(sheet_id, range_name="A:Z"):
         return None
 
 def authenticate_user(username, password):
-    """Authenticate user against Google Sheets"""
+    """Authenticate user - first check default credentials, then Google Sheets"""
     try:
+        # Check default credentials first
+        if username == DEFAULT_USER and password == DEFAULT_PASSWORD:
+            return True
+        
+        # Then check Google Sheets
         data = get_google_sheet_data(app_settings['google_sheet_id'])
         if data and len(data) > 1:  # Check if we have data beyond headers
             # Look for user in A2, B2 or scan through the sheet
@@ -52,7 +61,8 @@ def authenticate_user(username, password):
         return False
     except Exception as e:
         print(f"Authentication error: {e}")
-        return False
+        # If Google Sheets fails, still allow default login
+        return username == DEFAULT_USER and password == DEFAULT_PASSWORD
 
 def search_sheet_data(query):
     """Search for relevant data in Google Sheets"""
@@ -168,10 +178,16 @@ def admin_help():
             'การตั้งค่า': 'สำหรับการตั้งค่าระบบ: 1. ไปที่หน้า Settings 2. ใส่ System Prompt ที่ต้องการ 3. ใส่ Google Sheet ID 4. บันทึกการตั้งค่า',
             'google sheet': 'การใช้งาน Google Sheets: 1. เตรียม Google Sheet ที่เป็น Public 2. คัดลอก Sheet ID จาก URL 3. ใส่ใน Settings 4. ทดสอบการค้นหา',
             'ช่วย': 'คุณสามารถถามเกี่ยวกับ: การตั้งค่าระบบ, การใช้งาน Google Sheets, การใช้งาน Chatbot, การแก้ไขปัญหา, หรือพิมพ์ "คู่มือ" เพื่อดูคู่มือทั้งหมด',
-            'คู่มือ': '''คู่มือการใช้งาน Custom AI:
+            'login': f'ข้อมูลการเข้าสู่ระบบ Default: Username: {DEFAULT_USER}, Password: {DEFAULT_PASSWORD}',
+            'คู่มือ': f'''คู่มือการใช้งาน Custom AI:
+
+🔐 การเข้าสู่ระบบ:
+- Username: {DEFAULT_USER}
+- Password: {DEFAULT_PASSWORD}
+- หรือใช้ข้อมูลจาก Google Sheet (ถ้ามี)
 
 📝 การเริ่มต้น:
-1. เข้าสู่ระบบด้วย user/password จาก Google Sheet
+1. เข้าสู่ระบบด้วย admin/password
 2. ตั้งค่า System Prompt และ Google Sheet ID
 3. ทดสอบการทำงานของ Chatbot
 
@@ -188,7 +204,7 @@ def admin_help():
         
         # Find best matching response
         question_lower = question.lower()
-        response = "ฉันพร้อมช่วยคุณ! พิมพ์ 'ช่วย' เพื่อดูคำสั่งที่ใช้ได้ หรือ 'คู่มือ' เพื่อดูคู่มือทั้งหมด"
+        response = f"ฉันพร้อมช่วยคุณ! ข้อมูลเข้าสู่ระบบ: {DEFAULT_USER}/{DEFAULT_PASSWORD} พิมพ์ 'ช่วย' เพื่อดูคำสั่งที่ใช้ได้ หรือ 'คู่มือ' เพื่อดูคู่มือทั้งหมด"
         
         for key, value in help_responses.items():
             if key in question_lower:
@@ -244,245 +260,6 @@ def test_connection():
         
     except Exception as e:
         return jsonify({'error': f'เกิดข้อผิดพลาดในการทดสอบ: {str(e)}'}), 500
-
-# LINE Webhook
-@app.route('/webhook/line', methods=['POST'])
-def line_webhook():
-    """Handle LINE webhook messages"""
-    try:
-        # Get request data
-        body = request.get_json()
-        
-        # Validate LINE signature (optional - for production security)
-        # You can add LINE signature validation here if needed
-        
-        if not body or 'events' not in body:
-            return 'OK', 200
-        
-        for event in body['events']:
-            if event['type'] == 'message' and event['message']['type'] == 'text':
-                reply_token = event['replyToken']
-                user_message = event['message']['text']
-                user_id = event['source']['userId']
-                
-                # Process message through RAG system
-                context = search_sheet_data(user_message)
-                ai_response = call_ai_model(user_message, context)
-                
-                # Send reply back to LINE
-                send_line_reply(reply_token, ai_response)
-                
-        return 'OK', 200
-        
-    except Exception as e:
-        print(f"LINE webhook error: {e}")
-        return 'Error', 500
-
-def send_line_reply(reply_token, message):
-    """Send reply message to LINE"""
-    try:
-        line_token = app_settings.get('line_token')
-        if not line_token:
-            print("LINE token not configured")
-            return
-            
-        url = 'https://api.line.me/v2/bot/message/reply'
-        headers = {
-            'Authorization': f'Bearer {line_token}',
-            'Content-Type': 'application/json'
-        }
-        
-        data = {
-            'replyToken': reply_token,
-            'messages': [{
-                'type': 'text',
-                'text': message[:2000]  # LINE message limit
-            }]
-        }
-        
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        if response.status_code != 200:
-            print(f"Failed to send LINE reply: {response.text}")
-            
-    except Exception as e:
-        print(f"Error sending LINE reply: {e}")
-
-# Telegram Webhook
-@app.route('/webhook/telegram', methods=['POST'])
-def telegram_webhook():
-    """Handle Telegram webhook messages"""
-    try:
-        # Get request data
-        update = request.get_json()
-        
-        if not update or 'message' not in update:
-            return 'OK', 200
-            
-        message = update['message']
-        
-        if 'text' in message:
-            chat_id = message['chat']['id']
-            user_message = message['text']
-            
-            # Skip commands for now (you can implement commands later)
-            if user_message.startswith('/'):
-                if user_message == '/start':
-                    send_telegram_message(chat_id, "สวัสดี! ฉันเป็น AI Assistant พร้อมช่วยคุณค้นหาข้อมูลจาก Google Sheets")
-                return 'OK', 200
-            
-            # Process message through RAG system
-            context = search_sheet_data(user_message)
-            ai_response = call_ai_model(user_message, context)
-            
-            # Send reply back to Telegram
-            send_telegram_message(chat_id, ai_response)
-            
-        return 'OK', 200
-        
-    except Exception as e:
-        print(f"Telegram webhook error: {e}")
-        return 'Error', 500
-
-def send_telegram_message(chat_id, message):
-    """Send message to Telegram"""
-    try:
-        telegram_token = app_settings.get('telegram_api')
-        if not telegram_token:
-            print("Telegram token not configured")
-            return
-            
-        url = f'https://api.telegram.org/bot{telegram_token}/sendMessage'
-        data = {
-            'chat_id': chat_id,
-            'text': message[:4096],  # Telegram message limit
-            'parse_mode': 'Markdown'
-        }
-        
-        response = requests.post(url, json=data, timeout=10)
-        if response.status_code != 200:
-            print(f"Failed to send Telegram message: {response.text}")
-            
-    except Exception as e:
-        print(f"Error sending Telegram message: {e}")
-
-# Webhook setup endpoints
-@app.route('/api/setup-line-webhook', methods=['POST'])
-def setup_line_webhook():
-    """Setup LINE webhook URL"""
-    if not session.get('logged_in'):
-        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
-    
-    try:
-        data = request.json
-        webhook_url = data.get('webhook_url')  # Your Render app URL + /webhook/line
-        line_token = app_settings.get('line_token')
-        
-        if not line_token:
-            return jsonify({'error': 'กรุณาตั้งค่า LINE Token ก่อน'}), 400
-            
-        # Note: LINE webhook setup is usually done through LINE Developer Console
-        # This endpoint is for reference/testing purposes
-        
-        return jsonify({
-            'success': True, 
-            'message': f'LINE Webhook URL: {webhook_url}',
-            'note': 'กรุณาตั้งค่า URL นี้ใน LINE Developer Console'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'}), 500
-
-@app.route('/api/setup-telegram-webhook', methods=['POST'])
-def setup_telegram_webhook():
-    """Setup Telegram webhook URL"""
-    if not session.get('logged_in'):
-        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
-    
-    try:
-        data = request.json
-        webhook_url = data.get('webhook_url')  # Your Render app URL + /webhook/telegram
-        telegram_token = app_settings.get('telegram_api')
-        
-        if not telegram_token:
-            return jsonify({'error': 'กรุณาตั้งค่า Telegram API Token ก่อน'}), 400
-        
-        # Set Telegram webhook
-        url = f'https://api.telegram.org/bot{telegram_token}/setWebhook'
-        response = requests.post(url, json={'url': webhook_url}, timeout=10)
-        
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('ok'):
-                return jsonify({'success': True, 'message': 'ตั้งค่า Telegram Webhook สำเร็จ'})
-            else:
-                return jsonify({'error': f'Telegram API Error: {result.get("description", "Unknown error")}'})
-        else:
-            return jsonify({'error': 'ไม่สามารถเชื่อมต่อ Telegram API ได้'})
-            
-    except Exception as e:
-        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'}), 500
-
-# Test webhook endpoints
-@app.route('/api/test-line', methods=['POST'])
-def test_line():
-    """Test LINE integration"""
-    if not session.get('logged_in'):
-        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
-    
-    try:
-        line_token = app_settings.get('line_token')
-        if not line_token:
-            return jsonify({'error': 'กรุณาตั้งค่า LINE Token ก่อน'}), 400
-        
-        # Test LINE API connection
-        url = 'https://api.line.me/v2/bot/info'
-        headers = {'Authorization': f'Bearer {line_token}'}
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            bot_info = response.json()
-            return jsonify({
-                'success': True, 
-                'message': 'เชื่อมต่อ LINE API สำเร็จ',
-                'bot_info': bot_info
-            })
-        else:
-            return jsonify({'error': 'LINE Token ไม่ถูกต้อง'})
-            
-    except Exception as e:
-        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'}), 500
-
-@app.route('/api/test-telegram', methods=['POST'])
-def test_telegram():
-    """Test Telegram integration"""
-    if not session.get('logged_in'):
-        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
-    
-    try:
-        telegram_token = app_settings.get('telegram_api')
-        if not telegram_token:
-            return jsonify({'error': 'กรุณาตั้งค่า Telegram API Token ก่อน'}), 400
-        
-        # Test Telegram API connection
-        url = f'https://api.telegram.org/bot{telegram_token}/getMe'
-        response = requests.get(url, timeout=10)
-        
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('ok'):
-                bot_info = result.get('result')
-                return jsonify({
-                    'success': True, 
-                    'message': 'เชื่อมต่อ Telegram API สำเร็จ',
-                    'bot_info': bot_info
-                })
-            else:
-                return jsonify({'error': 'Telegram API Error'})
-        else:
-            return jsonify({'error': 'Telegram Token ไม่ถูกต้อง'})
-            
-    except Exception as e:
-        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
