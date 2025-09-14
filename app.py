@@ -591,7 +591,33 @@ def post_process_response(response, context):
 @app.route('/')
 def index():
     """หน้าแรกของแอปพลิเคชัน"""
+    if not session.get('logged_in'):
+        return render_template('login.html')
     return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """จัดการการเข้าสู่ระบบ"""
+    if request.method == 'POST':
+        data = request.json
+        username = data.get('username', '')
+        password = data.get('password', '')
+        
+        # Default credentials
+        if username == 'admin' and password == 'password':
+            session['logged_in'] = True
+            session['username'] = username
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'}), 401
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """ออกจากระบบ"""
+    session.clear()
+    return redirect('/')
     
 @app.route('/api/enhanced-chat', methods=['POST'])
 def enhanced_chat():
@@ -682,7 +708,12 @@ app_settings = {
     'max_response_length': 2048,
     'enable_fuzzy_search': True,
     'enable_analytics': True,
-    'conversation_memory': True
+    'conversation_memory': True,
+    # เพิ่มส่วนนี้
+    'default_credentials': {
+        'username': 'admin',
+        'password': 'password'
+    }
 }
 
 # Additional utility functions for enhanced functionality
