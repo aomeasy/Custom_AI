@@ -339,7 +339,10 @@ def call_ai_model(prompt, context=""):
         payload = {
             "model": CHAT_MODEL,
             "prompt": full_prompt,
-            "stream": False
+            "stream": False,
+            "temperature": 0.1,  # Very low temperature for consistent output
+            "top_p": 0.7,        # More focused responses
+            "max_tokens": 600    # Limit response length
         }
         
         print(f"[DEBUG] Calling AI model: {CHAT_MODEL}")
