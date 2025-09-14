@@ -318,7 +318,6 @@ def filter_ai_response(response):
         return "ขออภัย ไม่สามารถประมวลผลคำตอบได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง"
     
     return response.strip()
-
 def call_ai_model(prompt, context=""):
     """Call the AI model with context and enhanced debugging"""
     try:
@@ -339,10 +338,7 @@ def call_ai_model(prompt, context=""):
         payload = {
             "model": CHAT_MODEL,
             "prompt": full_prompt,
-            "stream": False,
-            "temperature": 0.1,  # Very low temperature for consistent output
-            "top_p": 0.7,        # More focused responses
-            "max_tokens": 600    # Limit response length
+            "stream": False
         }
         
         print(f"[DEBUG] Calling AI model: {CHAT_MODEL}")
