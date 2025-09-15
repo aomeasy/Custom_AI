@@ -1,0 +1,482 @@
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+                <i data-lucide="brain" class="w-8 h-8 mr-3 text-primary-600"></i>
+                AI Configuration
+            </h1>
+            <p class="text-gray-600 mt-1">กำหนดการทำงานและพารามิเตอร์ของ AI Model</p>
+        </div>
+        <button onclick="resetToDefault()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center">
+            <i data-lucide="rotate-ccw" class="w-4 h-4 mr-2"></i>
+            รีเซ็ตค่าเดิม
+        </button>
+    </div>
+
+    <!-- System Prompt Configuration -->
+    <div class="glass-card p-6">
+        <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="message-square-text" class="w-6 h-6 mr-2 text-blue-600"></i>
+            System Prompt
+        </h3>
+        <p class="text-gray-600 mb-4">กำหนดบุคลิกและวิธีการตอบของ AI</p>
+        
+        <div class="space-y-4">
+            <!-- Template Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">เทมเพลตสำเร็จรูป</label>
+                <select id="prompt-template" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option value="">เลือกเทมเพลต...</option>
+                    <option value="assistant">AI Assistant ทั่วไป</option>
+                    <option value="professional">AI สำหรับองค์กร</option>
+                    <option value="friendly">AI เป็นมิตร</option>
+                    <option value="technical">AI เทคนิค</option>
+                    <option value="custom">กำหนดเอง</option>
+                </select>
+            </div>
+
+            <!-- System Prompt Editor -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">System Prompt</label>
+                <textarea id="system-prompt" rows="8" 
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+                          placeholder="กำหนดวิธีการทำงานของ AI..."></textarea>
+                <p class="text-xs text-gray-500 mt-2">
+                    <i data-lucide="info" class="w-3 h-3 inline mr-1"></i>
+                    System Prompt จะถูกส่งไปยัง AI ในทุกการสนทนาเพื่อกำหนดบทบาทและวิธีการตอบ
+                </p>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="flex space-x-2">
+                <button onclick="previewPrompt()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                    <i data-lucide="eye" class="w-4 h-4 mr-2"></i>
+                    ตัวอย่าง
+                </button>
+                <button onclick="testPrompt()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center">
+                    <i data-lucide="play" class="w-4 h-4 mr-2"></i>
+                    ทดสอบ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Parameters -->
+    <div class="glass-card p-6">
+        <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="sliders-horizontal" class="w-6 h-6 mr-2 text-purple-600"></i>
+            พารามิเตอร์ Model
+        </h3>
+        <p class="text-gray-600 mb-6">ปรับแต่งพฤติกรรมการตอบของ AI</p>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Temperature -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Temperature</label>
+                <div class="space-y-2">
+                    <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.3" 
+                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>เฉพาะเจาะจง (0)</span>
+                        <span id="temperature-value" class="font-medium">0.3</span>
+                        <span>สร้างสรรค์ (1)</span>
+                    </div>
+                    <p class="text-xs text-gray-600">ค่าต่ำ = คำตอบที่แน่นอน, ค่าสูง = คำตอบที่หลากหลาย</p>
+                </div>
+            </div>
+
+            <!-- Top P -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Top P</label>
+                <div class="space-y-2">
+                    <input type="range" id="top-p" min="0.1" max="1" step="0.1" value="0.8" 
+                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>จำกัด (0.1)</span>
+                        <span id="top-p-value" class="font-medium">0.8</span>
+                        <span>เปิดกว้าง (1)</span>
+                    </div>
+                    <p class="text-xs text-gray-600">ควบคุมความหลากหลายของคำตอบ</p>
+                </div>
+            </div>
+
+            <!-- Max Tokens -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Max Tokens</label>
+                <div class="space-y-2">
+                    <input type="range" id="max-tokens" min="100" max="1000" step="50" value="500" 
+                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>สั้น (100)</span>
+                        <span id="max-tokens-value" class="font-medium">500</span>
+                        <span>ยาว (1000)</span>
+                    </div>
+                    <p class="text-xs text-gray-600">จำกัดความยาวของคำตอบ</p>
+                </div>
+            </div>
+
+            <!-- Response Format -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">รูปแบบการตอบ</label>
+                <select id="response-format" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option value="flexible">ยืดหยุ่น</option>
+                    <option value="structured">มีโครงสร้าง</option>
+                    <option value="concise">กระชับ</option>
+                    <option value="detailed">รายละเอียด</option>
+                </select>
+                <p class="text-xs text-gray-600 mt-1">กำหนดลักษณะการจัดรูปแบบคำตอบ</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Settings -->
+    <div class="glass-card p-6">
+        <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="settings-2" class="w-6 h-6 mr-2 text-orange-600"></i>
+            การตั้งค่าขั้นสูง
+        </h3>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Language Processing -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">การประมวลผลภาษา</label>
+                <div class="space-y-3">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="filter-thinking" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm">กรองกระบวนการคิด</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="thai-only" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm">บังคับใช้ภาษาไทยเท่านั้น</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="format-response" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm">จัดรูปแบบคำตอบอัตโนมัติ</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Context Management -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">การจัดการบริบท</label>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">ความยาวบริบทสูงสุด</label>
+                        <input type="number" id="max-context" value="2000" min="500" max="5000" step="100"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">จำนวนแถวข้อมูลสูงสุด</label>
+                        <input type="number" id="max-rows" value="10" min="1" max="50" step="1"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save and Test Actions -->
+    <div class="flex space-x-4">
+        <button onclick="saveConfiguration()" class="bg-primary-500 text-white px-6 py-3 rounded-lg hover:bg-primary-600 transition-colors flex items-center">
+            <i data-lucide="save" class="w-5 h-5 mr-2"></i>
+            บันทึกการตั้งค่า
+        </button>
+        <button onclick="testConfiguration()" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+            <i data-lucide="test-tube" class="w-5 h-5 mr-2"></i>
+            ทดสอบการตั้งค่า
+        </button>
+        <button onclick="loadConfiguration()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors flex items-center">
+            <i data-lucide="download" class="w-5 h-5 mr-2"></i>
+            โหลดการตั้งค่า
+        </button>
+    </div>
+
+    <!-- Test Result -->
+    <div id="test-result" class="glass-card p-6 hidden">
+        <h4 class="text-lg font-semibold mb-4 flex items-center">
+            <i data-lucide="flask" class="w-5 h-5 mr-2"></i>
+            ผลการทดสอบ
+        </h4>
+        <div id="test-output" class="bg-gray-50 p-4 rounded-lg font-mono text-sm">
+            <!-- Test results will be displayed here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Template definitions
+    const promptTemplates = {
+        assistant: `คุณเป็น AI Assistant ที่ช่วยเหลือผู้ใช้ด้วยความเป็นมิตร ตอบคำถามอย่างถูกต้องและมีประโยชน์
+
+คำแนะนำสำคัญ:
+- ตอบคำถามเป็นภาษาไทยเท่านั้น
+- ให้ข้อมูลที่ถูกต้องและเป็นประโยชน์
+- ตอบอย่างสุภาพและเป็นมิตร
+- หากไม่แน่ใจ ให้บอกความไม่แน่ใจอย่างตรงไปตรงมา`,
+
+        professional: `คุณเป็น AI Assistant สำหรับองค์กร ที่ช่วยค้นหาข้อมูลจาก Google Sheets อย่างมืออาชีพ
+
+คำแนะนำสำคัญ:
+- ตอบคำถามเป็นภาษาไทยเท่านั้น
+- ใช้ภาษาที่เป็นทางการและเหมาะสมกับสภาพแวดล้อมการทำงาน
+- ให้ข้อมูลที่แม่นยำและตรงประเด็น
+- จัดรูปแบบข้อมูลให้อ่านง่าย
+- รักษาความเป็นมืออาชีพในการตอบทุกคำถาม`,
+
+        friendly: `คุณเป็น AI Assistant ที่เป็นมิตรและใกล้ชิด ช่วยค้นหาข้อมูลด้วยความอบอุ่น
+
+คำแนะนำสำคัญ:
+- ตอบคำถามเป็นภาษาไทยเท่านั้น
+- ใช้ภาษาที่เป็นมิตรและอบอุ่น
+- แสดงความเอาใจใส่และความช่วยเหลือ
+- ให้กำลังใจและสร้างบรรยากาศที่ดี
+- ตอบด้วยความเข้าใจและเห็นอกเห็นใจ`,
+
+        technical: `คุณเป็น AI Assistant ที่เชี่ยวชาญด้านเทคนิค ช่วยวิเคราะห์และค้นหาข้อมูลอย่างละเอียด
+
+คำแนะนำสำคัญ:
+- ตอบคำถามเป็นภาษาไทยเท่านั้น
+- ให้รายละเอียดทางเทคนิคที่แม่นยำ
+- อธิบายกระบวนการและวิธีการอย่างชัดเจน
+- ใช้ศัพท์เทคนิคที่เหมาะสม
+- ให้ข้อมูลเชิงลึกและการวิเคราะห์`
+    };
+
+    // Initialize sliders
+    function initializeSliders() {
+        const temperatureSlider = document.getElementById('temperature');
+        const topPSlider = document.getElementById('top-p');
+        const maxTokensSlider = document.getElementById('max-tokens');
+
+        temperatureSlider.addEventListener('input', function() {
+            document.getElementById('temperature-value').textContent = this.value;
+        });
+
+        topPSlider.addEventListener('input', function() {
+            document.getElementById('top-p-value').textContent = this.value;
+        });
+
+        maxTokensSlider.addEventListener('input', function() {
+            document.getElementById('max-tokens-value').textContent = this.value;
+        });
+    }
+
+    // Template selection handler
+    function handleTemplateSelection() {
+        const templateSelect = document.getElementById('prompt-template');
+        const systemPrompt = document.getElementById('system-prompt');
+
+        templateSelect.addEventListener('change', function() {
+            if (this.value && this.value !== 'custom') {
+                systemPrompt.value = promptTemplates[this.value];
+            } else if (this.value === 'custom') {
+                systemPrompt.value = '';
+                systemPrompt.focus();
+            }
+        });
+    }
+
+    function previewPrompt() {
+        const prompt = document.getElementById('system-prompt').value;
+        if (!prompt.trim()) {
+            showToast('กรุณาใส่ System Prompt ก่อน', 'error');
+            return;
+        }
+
+        alert('ตัวอย่าง System Prompt:\n\n' + prompt);
+    }
+
+    function testPrompt() {
+        const prompt = document.getElementById('system-prompt').value;
+        if (!prompt.trim()) {
+            showToast('กรุณาใส่ System Prompt ก่อน', 'error');
+            return;
+        }
+
+        showLoading();
+        
+        const testQuery = 'สวัสดี ช่วยแนะนำตัวหน่อย';
+        
+        fetch('/api/testing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                test_type: 'query_test',
+                query: testQuery
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                document.getElementById('test-result').classList.remove('hidden');
+                document.getElementById('test-output').innerHTML = `
+                    <div class="space-y-2">
+                        <p><strong>คำถามทดสอบ:</strong> ${data.query}</p>
+                        <p><strong>คำตอบ AI:</strong></p>
+                        <div class="bg-white p-3 rounded border">${data.ai_response}</div>
+                        <p class="text-xs text-gray-500"><strong>เวลา:</strong> ${new Date(data.timestamp).toLocaleString('th-TH')}</p>
+                    </div>
+                `;
+                showToast('ทดสอบ System Prompt สำเร็จ', 'success');
+            } else {
+                showToast('เกิดข้อผิดพลาดในการทดสอบ', 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showToast('เกิดข้อผิดพลาดในการทดสอบ', 'error');
+        });
+    }
+
+    function saveConfiguration() {
+        const config = {
+            system_prompt: document.getElementById('system-prompt').value,
+            temperature: parseFloat(document.getElementById('temperature').value),
+            top_p: parseFloat(document.getElementById('top-p').value),
+            max_tokens: parseInt(document.getElementById('max-tokens').value),
+            response_format: document.getElementById('response-format').value,
+            filter_thinking: document.getElementById('filter-thinking').checked,
+            thai_only: document.getElementById('thai-only').checked,
+            format_response: document.getElementById('format-response').checked,
+            max_context: parseInt(document.getElementById('max-context').value),
+            max_rows: parseInt(document.getElementById('max-rows').value)
+        };
+
+        if (!config.system_prompt.trim()) {
+            showToast('กรุณาใส่ System Prompt', 'error');
+            return;
+        }
+
+        showLoading();
+        
+        fetch('/api/ai-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                showToast('บันทึกการตั้งค่า AI สำเร็จ', 'success');
+            } else {
+                showToast(data.message || 'เกิดข้อผิดพลาดในการบันทึก', 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showToast('เกิดข้อผิดพลาดในการบันทึก', 'error');
+        });
+    }
+
+    function testConfiguration() {
+        showLoading();
+        
+        fetch('/api/testing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                test_type: 'full_system'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+            document.getElementById('test-result').classList.remove('hidden');
+            document.getElementById('test-output').innerHTML = `
+                <div class="space-y-3">
+                    <h5 class="font-semibold">ผลการทดสอบระบบ:</h5>
+                    <div class="grid gap-2">
+                        <div class="flex justify-between">
+                            <span>AI Model:</span>
+                            <span class="${data.tests.ai_model.status === 'pass' ? 'text-green-600' : 'text-red-600'}">${data.tests.ai_model.status}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Google Sheets:</span>
+                            <span class="${data.tests.google_sheets.status === 'pass' ? 'text-green-600' : 'text-red-600'}">${data.tests.google_sheets.status}</span>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        <p>ทดสอบเมื่อ: ${new Date(data.timestamp).toLocaleString('th-TH')}</p>
+                    </div>
+                </div>
+            `;
+            
+            const allPassed = Object.values(data.tests).every(test => test.status === 'pass');
+            showToast(allPassed ? 'การทดสอบผ่านทุกรายการ' : 'พบปัญหาในการทดสอบ', allPassed ? 'success' : 'error');
+        })
+        .catch(error => {
+            hideLoading();
+            showToast('เกิดข้อผิดพลาดในการทดสอบ', 'error');
+        });
+    }
+
+    function loadConfiguration() {
+        showLoading();
+        
+        fetch('/api/ai-config', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+            // Load system prompt
+            document.getElementById('system-prompt').value = data.system_prompt || '';
+            
+            // Load model parameters
+            const params = data.model_params || {};
+            document.getElementById('temperature').value = params.temperature || 0.3;
+            document.getElementById('top-p').value = params.top_p || 0.8;
+            document.getElementById('max-tokens').value = params.max_tokens || 500;
+            
+            // Update display values
+            document.getElementById('temperature-value').textContent = params.temperature || 0.3;
+            document.getElementById('top-p-value').textContent = params.top_p || 0.8;
+            document.getElementById('max-tokens-value').textContent = params.max_tokens || 500;
+            
+            showToast('โหลดการตั้งค่าสำเร็จ', 'success');
+        })
+        .catch(error => {
+            hideLoading();
+            showToast('เกิดข้อผิดพลาดในการโหลดการตั้งค่า', 'error');
+        });
+    }
+
+    function resetToDefault() {
+        if (confirm('คุณต้องการรีเซ็ตการตั้งค่าเป็นค่าเริ่มต้นหรือไม่?')) {
+            document.getElementById('prompt-template').value = 'professional';
+            document.getElementById('system-prompt').value = promptTemplates.professional;
+            document.getElementById('temperature').value = 0.3;
+            document.getElementById('top-p').value = 0.8;
+            document.getElementById('max-tokens').value = 500;
+            document.getElementById('response-format').value = 'flexible';
+            
+            document.getElementById('filter-thinking').checked = true;
+            document.getElementById('thai-only').checked = true;
+            document.getElementById('format-response').checked = true;
+            document.getElementById('max-context').value = 2000;
+            document.getElementById('max-rows').value = 10;
+            
+            // Update display values
+            document.getElementById('temperature-value').textContent = '0.3';
+            document.getElementById('top-p-value').textContent = '0.8';
+            document.getElementById('max-tokens-value').textContent = '500';
+            
+            showToast('รีเซ็ตการตั้งค่าเรียบร้อย', 'success');
+        }
+    }
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeSliders();
+        handleTemplateSelection();
+        loadConfiguration();
+    });
+</script>
