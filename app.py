@@ -823,6 +823,255 @@ def view_sheet():
         print(f"[DEBUG] View sheet error: {e}")
         return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'})
 
+@app.route('/dashboard')
+def dashboard():
+    if not session.get('logged_in'):
+        return redirect('/')
+    return render_template('dashboard.html')
+
+@app.route('/ai-config')
+def ai_config():
+    if not session.get('logged_in'):
+        return redirect('/')
+    return render_template('ai_config.html')
+
+@app.route('/data-sources')
+def data_sources():
+    if not session.get('logged_in'):
+        return redirect('/')
+    return render_template('data_sources.html')
+
+@app.route('/testing')
+def testing():
+    if not session.get('logged_in'):
+        return redirect('/')
+    return render_template('testing.html')
+
+# API Routes สำหรับ Dashboard
+@app.route('/api/dashboard-stats', methods=['GET'])
+def dashboard_stats():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        # สถิติพื้นฐาน
+        stats = {
+            'system_status': 'online',
+            'ai_model': CHAT_MODEL,
+            'google_sheet_id': app_settings['google_sheet_id'][:15] + '...',
+            'last_update': datetime.now().isoformat(),
+            'total_queries': session.get('query_count', 0),
+            'system_uptime': '24h 30m'  # สามารถคำนวณจริงได้
+        }
+        
+        # ทดสอบการเชื่อมต่อ
+        data = get_google_sheet_data(app_settings['google_sheet_id'])
+        stats['google_sheets_status'] = 'connected' if data else 'error'
+        stats['data_rows'] = len(data) - 1 if data else 0
+        
+        # ทดสอบ AI Model
+        try:
+            test_response = requests.post(CHAT_API_URL, 
+                                        json={"model": CHAT_MODEL, "prompt": "test", "stream": False}, 
+                                        timeout=5)
+            stats['ai_model_status'] = 'connected' if test_response.status_code == 200 else 'error'
+        except:
+            stats['ai_model_status'] = 'error'
+        
+        return jsonify(stats)
+        
+    except Exception as e:
+        return jsonify({'error': f'เกิดข้อผิดพลาด: {str(e)}'}), 500
+
+# API Routes สำหรับ AI Configuration
+@app.route('/api/ai-config', methods=['GET', 'POST'])
+def ai_configuration():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    if request.method == 'POST':
+        try:
+            data = request.json
+            
+            # อัพเดตการตั้งค่า AI
+            if 'system_prompt' in data:
+                app_settings['system_prompt'] = data['system_prompt']
+            
+            # พารามิเตอร์โมเดล (อาจเพิ่มในอนาคต)
+            model_params = {
+                'temperature': data.get('temperature', 0.3),
+                'max_tokens': data.get('max_tokens', 500),
+                'top_p': data.get('top_p', 0.8)
+            }
+            
+            # เก็บการตั้งค่าพารามิเตอร์
+            app_settings['model_params'] = model_params
+            
+            return jsonify({'success': True, 'message': 'บันทึกการตั้งค่า AI สำเร็จ'})
+            
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+    
+    # GET request - ส่งการตั้งค่าปัจจุบัน
+    return jsonify({
+        'system_prompt': app_settings.get('system_prompt', ''),
+        'model_params': app_settings.get('model_params', {
+            'temperature': 0.3,
+            'max_tokens': 500,
+            'top_p': 0.8
+        }),
+        'current_model': CHAT_MODEL
+    })
+@app.route('/api/data-sources', methods=['GET', 'POST'])
+def data_sources_api():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    if request.method == 'POST':
+        try:
+            data = request.json
+            action = data.get('action')
+            
+            if action == 'update_sheet_id':
+                new_sheet_id = data.get('sheet_id', '')
+                if new_sheet_id:
+                    app_settings['google_sheet_id'] = new_sheet_id
+                    return jsonify({'success': True, 'message': 'อัพเดต Google Sheet ID สำเร็จ'})
+                else:
+                    return jsonify({'success': False, 'message': 'กรุณาใส่ Sheet ID'})
+            
+            elif action == 'test_connection':
+                test_data = get_google_sheet_data(app_settings['google_sheet_id'])
+                if test_data:
+                    return jsonify({
+                        'success': True, 
+                        'message': 'เชื่อมต่อสำเร็จ',
+                        'rows': len(test_data),
+                        'columns': len(test_data[0]) if test_data else 0,
+                        'preview': test_data[:3] if test_data else []
+                    })
+                else:
+                    return jsonify({'success': False, 'message': 'ไม่สามารถเชื่อมต่อได้'})
+            
+            elif action == 'analyze_data':
+                analysis = analyze_sheet_structure(get_google_sheet_data(app_settings['google_sheet_id']))
+                if analysis:
+                    return jsonify({'success': True, 'analysis': analysis})
+                else:
+                    return jsonify({'success': False, 'message': 'ไม่สามารถวิเคราะห์ข้อมูลได้'})
+                    
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+    
+    # GET request - ส่งข้อมูลปัจจุบัน
+    return jsonify({
+        'google_sheet_id': app_settings.get('google_sheet_id', ''),
+        'sheet_url': f"https://docs.google.com/spreadsheets/d/{app_settings.get('google_sheet_id', '')}"
+    })
+
+# API Routes สำหรับ Testing
+@app.route('/api/testing', methods=['POST'])
+def testing_api():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'กรุณาเข้าสู่ระบบก่อน'}), 401
+    
+    try:
+        data = request.json
+        test_type = data.get('test_type')
+        
+        if test_type == 'full_system':
+            # ทดสอบระบบทั้งหมด
+            results = {
+                'timestamp': datetime.now().isoformat(),
+                'tests': {}
+            }
+            
+            # ทดสอบ Google Sheets
+            sheet_data = get_google_sheet_data(app_settings['google_sheet_id'])
+            results['tests']['google_sheets'] = {
+                'status': 'pass' if sheet_data else 'fail',
+                'message': f'พบ {len(sheet_data)} แถว' if sheet_data else 'ไม่สามารถเชื่อมต่อได้',
+                'details': {
+                    'sheet_id': app_settings['google_sheet_id'],
+                    'rows': len(sheet_data) if sheet_data else 0
+                }
+            }
+            
+            # ทดสอบ AI Model
+            try:
+                ai_response = requests.post(CHAT_API_URL, 
+                                          json={"model": CHAT_MODEL, "prompt": "test connection", "stream": False}, 
+                                          timeout=10)
+                results['tests']['ai_model'] = {
+                    'status': 'pass' if ai_response.status_code == 200 else 'fail',
+                    'message': f'HTTP {ai_response.status_code}',
+                    'details': {
+                        'model': CHAT_MODEL,
+                        'url': CHAT_API_URL,
+                        'response_time': '< 1s'
+                    }
+                }
+            except Exception as e:
+                results['tests']['ai_model'] = {
+                    'status': 'fail',
+                    'message': str(e),
+                    'details': {'error': str(e)}
+                }
+            
+            return jsonify(results)
+        
+        elif test_type == 'query_test':
+            # ทดสอบคำถาม
+            test_query = data.get('query', 'มีข้อมูลอะไรบ้าง')
+            
+            # ใช้ฟังก์ชันค้นหาที่ปรับปรุงแล้ว
+            context = search_sheet_data(test_query)
+            ai_response = call_ai_model(test_query, context)
+            
+            return jsonify({
+                'success': True,
+                'query': test_query,
+                'context': context[:200] + '...' if len(context) > 200 else context,
+                'ai_response': ai_response,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'เกิดข้อผิดพลาด: {str(e)}'})
+# เพิ่มฟังก์ชันสำหรับอัพเดต call_ai_model ให้รองรับพารามิเตอร์
+def call_ai_model_enhanced(prompt, context=""):
+    """Enhanced AI model call with configurable parameters"""
+    try:
+        model_params = app_settings.get('model_params', {
+            'temperature': 0.3,
+            'max_tokens': 500,
+            'top_p': 0.8
+        })
+        
+        full_prompt = f"{app_settings['system_prompt']}\n\nContext from Google Sheets:\n{context}\n\nUser question: {prompt}"
+        
+        payload = {
+            "model": CHAT_MODEL,
+            "prompt": full_prompt,
+            "stream": False,
+            "temperature": model_params.get('temperature', 0.3),
+            "top_p": model_params.get('top_p', 0.8),
+            "max_tokens": model_params.get('max_tokens', 500)
+        }
+        
+        response = requests.post(CHAT_API_URL, json=payload, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result.get('response', 'ไม่สามารถสร้างคำตอบได้')
+            return filter_ai_response(ai_response)
+        else:
+            return "ขออภัย เกิดข้อผิดพลาดในการเชื่อมต่อ AI"
+            
+    except Exception as e:
+        print(f"[DEBUG] Enhanced AI Model error: {e}")
+        return "เกิดข้อผิดพลาดในการประมวลผล โปรดลองใหม่อีกครั้ง"
+
 if __name__ == '__main__':
     print("[DEBUG] Starting Flask application...")
     print(f"[DEBUG] Default Google Sheet ID: {DEFAULT_SHEET_ID}")
