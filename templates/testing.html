@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Testing & Debug - Custom AI{% endblock %}
+{% block page_title %}Testing & Debug{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+                <i data-lucide="flask-conical" class="w-8 h-8 mr-3 text-primary-600"></i>
+                Testing & Debug
+            </h1>
+            <p class="text-gray-600 mt-1">ทดสอบและแก้ไขปัญหาระบบ AI Chatbot</p>
+        </div>
+        <div class="flex space-x-2">
+            <button onclick="clearAllLogs()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center">
+                <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i>
+                ล้างล็อก
+            </button>
+            <button onclick="runFullTest()" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors flex items-center">
+                <i data-lucide="play" class="w-4 h-4 mr-2"></i>
+                รันทดสอบทั้งหมด
+            </button>
+        </div>
+    </div>
+
+    <!-- System Status Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-
