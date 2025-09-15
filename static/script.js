@@ -55,6 +55,8 @@ function bindEventListeners() {
 
 // Page Management
 function showPage(pageId) {
+    console.log('Showing page:', pageId); // เพิ่ม debug log
+    
     // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
@@ -64,6 +66,9 @@ function showPage(pageId) {
     const targetPage = document.getElementById(pageId + '-page');
     if (targetPage) {
         targetPage.classList.add('active');
+        console.log('Page found and activated:', pageId); // debug log
+    } else {
+        console.error('Page not found:', pageId + '-page'); // debug log
     }
     
     // Update navigation
