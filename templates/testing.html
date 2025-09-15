@@ -31,4 +31,574 @@
         <div class="glass-card p-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-
+                    <p class="text-sm font-medium text-gray-600">Google Sheets</p>
+                    <p id="sheets-test-status" class="text-lg font-bold text-gray-400">ยังไม่ทดสอบ</p>
+                </div>
+                <div id="sheets-test-icon" class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <i data-lucide="sheet" class="w-5 h-5 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">AI Model</p>
+                    <p id="ai-test-status" class="text-lg font-bold text-gray-400">ยังไม่ทดสอบ</p>
+                </div>
+                <div id="ai-test-icon" class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <i data-lucide="brain" class="w-5 h-5 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Overall Status</p>
+                    <p id="overall-test-status" class="text-lg font-bold text-gray-400">ยังไม่ทดสอบ</p>
+                </div>
+                <div id="overall-test-icon" class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <i data-lucide="activity" class="w-5 h-5 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Tests -->
+    <div class="glass-card p-6">
+        <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="zap" class="w-6 h-6 mr-2 text-blue-600"></i>
+            การทดสอบด่วน
+        </h3>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <button onclick="testGoogleSheets()" class="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                <i data-lucide="sheet" class="w-8 h-8 text-green-600 mb-2"></i>
+                <span class="text-sm font-medium text-green-900">Google Sheets</span>
+            </button>
+            <button onclick="testAIModel()" class="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <i data-lucide="brain" class="w-8 h-8 text-blue-600 mb-2"></i>
+                <span class="text-sm font-medium text-blue-900">AI Model</span>
+            </button>
+            <button onclick="testSearchFunction()" class="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                <i data-lucide="search" class="w-8 h-8 text-purple-600 mb-2"></i>
+                <span class="text-sm font-medium text-purple-900">Search Function</span>
+            </button>
+            <button onclick="testEndToEnd()" class="flex flex-col items-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+                <i data-lucide="workflow" class="w-8 h-8 text-orange-600 mb-2"></i>
+                <span class="text-sm font-medium text-orange-900">End-to-End</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Query Testing -->
+    <div class="glass-card p-6">
+        <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="message-square-plus" class="w-6 h-6 mr-2 text-green-600"></i>
+            ทดสอบคำถามแบบกำหนดเอง
+        </h3>
+        
+        <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Input Panel -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">คำถามทดสอบ</label>
+                    <textarea id="custom-query" rows="3" 
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              placeholder="เช่น: มีข้อมูลอะไรบ้าง, ค้นหา SD25060676, แสดงข้อมูล 5 แถว"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setTestQuery('มีข้อมูลอะไรบ้าง')" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                        ภาพรวมข้อมูล
+                    </button>
+                    <button onclick="setTestQuery('แสดงข้อมูล 5 แถว')" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                        แสดงข้อมูล
+                    </button>
+                    <button onclick="setTestQuery('หา SD25060676')" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                        ค้นหาเฉพาะ
+                    </button>
+                    <button onclick="setTestQuery('สรุปข้อมูล')" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                        สรุปข้อมูล
+                    </button>
+                </div>
+
+                <button onclick="runCustomTest()" class="w-full bg-green-500 text-white px-4 py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center">
+                    <i data-lucide="play-circle" class="w-5 h-5 mr-2"></i>
+                    รันทดสอบ
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div id="custom-test-results" class="bg-gray-50 rounded-lg p-4">
+                <h4 class="font-medium mb-3 flex items-center">
+                    <i data-lucide="monitor" class="w-4 h-4 mr-2"></i>
+                    ผลการทดสอบ
+                </h4>
+                <div id="custom-test-output" class="text-sm text-gray-600">
+                    ยังไม่มีการทดสอบ
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Logs -->
+    <div class="glass-card p-6">
+        <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="terminal" class="w-6 h-6 mr-2 text-gray-600"></i>
+            System Logs
+        </h3>
+        
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex space-x-2">
+                <button onclick="refreshLogs()" class="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-1"></i>
+                    รีเฟรช
+                </button>
+                <select id="log-level" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                    <option value="all">All Logs</option>
+                    <option value="error">Errors Only</option>
+                    <option value="warning">Warnings</option>
+                    <option value="info">Info</option>
+                    <option value="debug">Debug</option>
+                </select>
+            </div>
+            <button onclick="exportLogs()" class="bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm flex items-center">
+                <i data-lucide="download" class="w-4 h-4 mr-1"></i>
+                Export
+            </button>
+        </div>
+
+        <div id="system-logs" class="bg-black text-green-400 p-4 rounded-lg font-mono text-sm h-64 overflow-y-auto">
+            <div class="text-gray-500">[INFO] System initialized</div>
+            <div class="text-blue-400">[DEBUG] Loading configuration...</div>
+            <div class="text-green-400">[INFO] Ready for testing</div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="glass-card p-6">
+        <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="gauge" class="w-6 h-6 mr-2 text-purple-600"></i>
+            Performance Metrics
+        </h3>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="text-center p-4 bg-blue-50 rounded-lg">
+                <p class="text-2xl font-bold text-blue-600" id="avg-response-time">-</p>
+                <p class="text-sm text-blue-800">Avg Response Time</p>
+            </div>
+            <div class="text-center p-4 bg-green-50 rounded-lg">
+                <p class="text-2xl font-bold text-green-600" id="success-rate">-</p>
+                <p class="text-sm text-green-800">Success Rate</p>
+            </div>
+            <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                <p class="text-2xl font-bold text-yellow-600" id="total-tests">0</p>
+                <p class="text-sm text-yellow-800">Total Tests</p>
+            </div>
+            <div class="text-center p-4 bg-purple-50 rounded-lg">
+                <p class="text-2xl font-bold text-purple-600" id="error-count">0</p>
+                <p class="text-sm text-purple-800">Errors</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-medium mb-3">Recent Test History</h4>
+            <div id="test-history" class="space-y-2 max-h-32 overflow-y-auto">
+                <div class="text-sm text-gray-600">ยังไม่มีประวัติการทดสอบ</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Debug Options -->
+    <div class="glass-card p-6">
+        <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="bug" class="w-6 h-6 mr-2 text-red-600"></i>
+            Advanced Debug Options
+        </h3>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+            <div>
+                <h4 class="font-medium mb-3">Debug Settings</h4>
+                <div class="space-y-3">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="verbose-logging" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm">Verbose Logging</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="show-raw-data" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm">Show Raw Data</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="measure-performance" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm">Measure Performance</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="auto-retry" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <span class="ml-2 text-sm">Auto Retry on Failure</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="font-medium mb-3">Test Configuration</h4>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Timeout (seconds)</label>
+                        <input type="number" id="test-timeout" value="30" min="5" max="120" step="5"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-600 mb-1">Retry Attempts</label>
+                        <input type="number" id="retry-attempts" value="3" min="1" max="10" step="1"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 pt-6 border-t border-gray-200 flex space-x-3">
+            <button onclick="resetDebugSettings()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                รีเซ็ตการตั้งค่า
+            </button>
+            <button onclick="generateTestReport()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                สร้างรายงานการทดสอบ
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let testMetrics = {
+        totalTests: 0,
+        successfulTests: 0,
+        failedTests: 0,
+        responseTimes: [],
+        testHistory: []
+    };
+
+    function updateStatusIcon(elementId, iconId, status, message) {
+        const statusEl = document.getElementById(elementId);
+        const iconEl = document.getElementById(iconId);
+        
+        statusEl.textContent = message;
+        
+        if (status === 'success') {
+            statusEl.className = 'text-lg font-bold text-green-600';
+            iconEl.className = 'w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center';
+            iconEl.querySelector('i').className = iconEl.querySelector('i').className.replace('text-gray-400', 'text-green-600');
+        } else if (status === 'error') {
+            statusEl.className = 'text-lg font-bold text-red-600';
+            iconEl.className = 'w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center';
+            iconEl.querySelector('i').className = iconEl.querySelector('i').className.replace('text-gray-400', 'text-red-600');
+        } else {
+            statusEl.className = 'text-lg font-bold text-yellow-600';
+            iconEl.className = 'w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center';
+            iconEl.querySelector('i').className = iconEl.querySelector('i').className.replace('text-gray-400', 'text-yellow-600');
+        }
+    }
+
+    function addLog(level, message) {
+        const logsContainer = document.getElementById('system-logs');
+        const timestamp = new Date().toLocaleTimeString('th-TH');
+        const colors = {
+            'error': 'text-red-400',
+            'warning': 'text-yellow-400',
+            'info': 'text-green-400',
+            'debug': 'text-blue-400'
+        };
+        
+        const logEntry = `<div class="${colors[level] || 'text-gray-400'}">[${level.toUpperCase()}] ${timestamp} - ${message}</div>`;
+        logsContainer.innerHTML += logEntry;
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+
+    function updateMetrics() {
+        document.getElementById('total-tests').textContent = testMetrics.totalTests;
+        document.getElementById('error-count').textContent = testMetrics.failedTests;
+        
+        const successRate = testMetrics.totalTests > 0 ? 
+            Math.round((testMetrics.successfulTests / testMetrics.totalTests) * 100) : 0;
+        document.getElementById('success-rate').textContent = successRate + '%';
+        
+        const avgResponseTime = testMetrics.responseTimes.length > 0 ?
+            Math.round(testMetrics.responseTimes.reduce((a, b) => a + b, 0) / testMetrics.responseTimes.length) : 0;
+        document.getElementById('avg-response-time').textContent = avgResponseTime + 'ms';
+    }
+
+    function addTestToHistory(testName, status, responseTime) {
+        const historyContainer = document.getElementById('test-history');
+        const timestamp = new Date().toLocaleTimeString('th-TH');
+        const statusColor = status === 'success' ? 'text-green-600' : 'text-red-600';
+        
+        const historyItem = `
+            <div class="flex justify-between items-center text-sm">
+                <span>${testName}</span>
+                <div class="flex space-x-2">
+                    <span class="${statusColor}">${status}</span>
+                    <span class="text-gray-500">${responseTime}ms</span>
+                    <span class="text-gray-400">${timestamp}</span>
+                </div>
+            </div>
+        `;
+        
+        if (historyContainer.children.length === 1 && historyContainer.textContent.includes('ยังไม่มีประวัติ')) {
+            historyContainer.innerHTML = '';
+        }
+        
+        historyContainer.innerHTML = historyItem + historyContainer.innerHTML;
+        
+        // Keep only last 10 entries
+        while (historyContainer.children.length > 10) {
+            historyContainer.removeChild(historyContainer.lastChild);
+        }
+    }
+
+    function testGoogleSheets() {
+        addLog('info', 'Starting Google Sheets test...');
+        updateStatusIcon('sheets-test-status', 'sheets-test-icon', 'loading', 'กำลังทดสอบ...');
+        
+        const startTime = Date.now();
+        
+        fetch('/api/test-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const responseTime = Date.now() - startTime;
+            testMetrics.totalTests++;
+            testMetrics.responseTimes.push(responseTime);
+            
+            if (data.google_sheets) {
+                testMetrics.successfulTests++;
+                updateStatusIcon('sheets-test-status', 'sheets-test-icon', 'success', 'ผ่าน');
+                addLog('info', `Google Sheets test passed - ${data.google_sheets_details}`);
+                addTestToHistory('Google Sheets', 'success', responseTime);
+            } else {
+                testMetrics.failedTests++;
+                updateStatusIcon('sheets-test-status', 'sheets-test-icon', 'error', 'ล้มเหลว');
+                addLog('error', `Google Sheets test failed - ${data.google_sheets_details}`);
+                addTestToHistory('Google Sheets', 'failed', responseTime);
+            }
+            
+            updateMetrics();
+        })
+        .catch(error => {
+            const responseTime = Date.now() - startTime;
+            testMetrics.totalTests++;
+            testMetrics.failedTests++;
+            testMetrics.responseTimes.push(responseTime);
+            
+            updateStatusIcon('sheets-test-status', 'sheets-test-icon', 'error', 'ข้อผิดพลาด');
+            addLog('error', `Google Sheets test error: ${error.message}`);
+            addTestToHistory('Google Sheets', 'error', responseTime);
+            updateMetrics();
+        });
+    }
+
+    function testAIModel() {
+        addLog('info', 'Starting AI Model test...');
+        updateStatusIcon('ai-test-status', 'ai-test-icon', 'loading', 'กำลังทดสอบ...');
+        
+        const startTime = Date.now();
+        
+        fetch('/api/test-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const responseTime = Date.now() - startTime;
+            testMetrics.totalTests++;
+            testMetrics.responseTimes.push(responseTime);
+            
+            if (data.ai_model) {
+                testMetrics.successfulTests++;
+                updateStatusIcon('ai-test-status', 'ai-test-icon', 'success', 'ผ่าน');
+                addLog('info', `AI Model test passed - ${data.ai_model_details}`);
+                addTestToHistory('AI Model', 'success', responseTime);
+            } else {
+                testMetrics.failedTests++;
+                updateStatusIcon('ai-test-status', 'ai-test-icon', 'error', 'ล้มเหลว');
+                addLog('error', `AI Model test failed - ${data.ai_model_details}`);
+                addTestToHistory('AI Model', 'failed', responseTime);
+            }
+            
+            updateMetrics();
+        })
+        .catch(error => {
+            const responseTime = Date.now() - startTime;
+            testMetrics.totalTests++;
+            testMetrics.failedTests++;
+            testMetrics.responseTimes.push(responseTime);
+            
+            updateStatusIcon('ai-test-status', 'ai-test-icon', 'error', 'ข้อผิดพลาด');
+            addLog('error', `AI Model test error: ${error.message}`);
+            addTestToHistory('AI Model', 'error', responseTime);
+            updateMetrics();
+        });
+    }
+
+    function testSearchFunction() {
+        addLog('info', 'Starting Search Function test...');
+        
+        const testQuery = 'มีข้อมูลอะไรบ้าง';
+        const startTime = Date.now();
+        
+        fetch('/api/testing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                test_type: 'query_test',
+                query: testQuery
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const responseTime = Date.now() - startTime;
+            testMetrics.totalTests++;
+            testMetrics.responseTimes.push(responseTime);
+            
+            if (data.success) {
+                testMetrics.successfulTests++;
+                addLog('info', `Search Function test passed - Query: "${testQuery}"`);
+                addTestToHistory('Search Function', 'success', responseTime);
+            } else {
+                testMetrics.failedTests++;
+                addLog('error', 'Search Function test failed');
+                addTestToHistory('Search Function', 'failed', responseTime);
+            }
+            
+            updateMetrics();
+        })
+        .catch(error => {
+            const responseTime = Date.now() - startTime;
+            testMetrics.totalTests++;
+            testMetrics.failedTests++;
+            testMetrics.responseTimes.push(responseTime);
+            
+            addLog('error', `Search Function test error: ${error.message}`);
+            addTestToHistory('Search Function', 'error', responseTime);
+            updateMetrics();
+        });
+    }
+
+    function testEndToEnd() {
+        addLog('info', 'Starting End-to-End test...');
+        
+        const testQueries = [
+            'มีข้อมูลอะไรบ้าง',
+            'แสดงข้อมูล 3 แถว',
+            'หา SD25'
+        ];
+        
+        let completedTests = 0;
+        let passedTests = 0;
+        
+        testQueries.forEach((query, index) => {
+            const startTime = Date.now();
+            
+            fetch('/api/testing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    test_type: 'query_test',
+                    query: query
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseTime = Date.now() - startTime;
+                completedTests++;
+                testMetrics.totalTests++;
+                testMetrics.responseTimes.push(responseTime);
+                
+                if (data.success) {
+                    passedTests++;
+                    testMetrics.successfulTests++;
+                    addLog('info', `E2E Test ${index + 1} passed: "${query}"`);
+                } else {
+                    testMetrics.failedTests++;
+                    addLog('warning', `E2E Test ${index + 1} failed: "${query}"`);
+                }
+                
+                if (completedTests === testQueries.length) {
+                    const overallSuccess = passedTests === testQueries.length;
+                    addTestToHistory('End-to-End', overallSuccess ? 'success' : 'partial', 
+                                   Math.round(testMetrics.responseTimes.slice(-testQueries.length).reduce((a, b) => a + b, 0) / testQueries.length));
+                    addLog('info', `E2E Test completed: ${passedTests}/${testQueries.length} passed`);
+                }
+                
+                updateMetrics();
+            })
+            .catch(error => {
+                completedTests++;
+                testMetrics.totalTests++;
+                testMetrics.failedTests++;
+                addLog('error', `E2E Test ${index + 1} error: ${error.message}`);
+                updateMetrics();
+            });
+        });
+    }
+
+    function setTestQuery(query) {
+        document.getElementById('custom-query').value = query;
+    }
+
+    function runCustomTest() {
+        const query = document.getElementById('custom-query').value.trim();
+        if (!query) {
+            showToast('กรุณาใส่คำถามทดสอบ', 'error');
+            return;
+        }
+
+        addLog('info', `Starting custom test: "${query}"`);
+        const startTime = Date.now();
+        
+        fetch('/api/testing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                test_type: 'query_test',
+                query: query
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const responseTime = Date.now() - startTime;
+            testMetrics.totalTests++;
+            testMetrics.responseTimes.push(responseTime);
+            
+            if (data.success) {
+                testMetrics.successfulTests++;
+                document.getElementById('custom-test-output').innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-center text-green-600">
+                            <i data-lucide="check-circle" class="w-4 h-4 mr-2"></i>
+                            <span class="font-medium">ทดสอบสำเร็จ</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium mb-2">คำถาม:</p>
+                            <p class="text-sm bg-white p-2 rounded border">${data.query}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium mb-2">คำตอบ AI:</p>
+                            <div class="text-sm bg-white p-3 rounded border max-h-40 overflow-y-auto">${data.ai_response.replace(/\n/g, '<br>')}</div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <p>Response Time: ${responseTime}ms</p>
+                            <p>Timestamp: ${new Date(data.timestamp).toLocaleString('th-TH')}</p>
+                        </div>
+                    </div>
+                `;
+                addTestToHistory('Custom Query', 'success', responseTime);
+                addLog('info', `Custom test passed: "${query}"`);
+            } else {
+                testMetrics.failedTests++;
+                document.getElementById('custom-test-output').innerHTML = `
+                    <div class="flex items-center text-red-600">
+                        <i data-lucide="x-circle" class="w-4 h-4 mr-2"></i>
+                        <span class="font-medium">ทดสอบล้ม
