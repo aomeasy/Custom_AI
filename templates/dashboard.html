@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Custom AI{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+                <i data-lucide="bar-chart-3" class="w-8 h-8 mr-3 text-primary-600"></i>
+                Dashboard
+            </h1>
+            <p class="text-gray-600 mt-1">ภาพรวมการทำงานของระบบ AI Chatbot</p>
+        </div>
+        <button onclick="refreshDashboard()" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors flex items-center">
+            <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
+            รีเฟรช
+        </button>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- System Status -->
+        <div class="glass-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">สถานะระบบ</p>
+                    <p id="system-status" class="text-2xl font-bold text-green-600">ออนไลน์</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i data-lucide="server" class="w-6 h-6 text-green-600"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <p class="text-xs text-gray-500">อัพเดทล่าสุด: <span id="last-update">-</span></p>
+            </div>
+        </div>
+
+        <!-- AI Model Status -->
+        <div class="glass-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">AI Model</p>
+                    <p id="ai-model-name" class="text-lg font-bold text-gray-900">-</p>
+                </div>
+                <div id="ai-status-icon" class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i data-lucide="brain" class="w-6 h-6 text-blue-600"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div id="ai-status-indicator" class="flex items-center text-xs">
+                    <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span class="text-gray-500">เชื่อมต่อแล้ว</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Google Sheets Status -->
+        <div class="glass-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Google Sheets</p>
+                    <p id="data-rows-count" class="text-2xl font-bold text-gray-900">-</p>
+                </div>
+                <div id="sheets-status-icon" class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <i data-lucide="sheet" class="w-6 h-6 text-yellow-600"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div id="sheets-status-indicator" class="flex items-center text-xs">
+                    <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span class="text-gray-500">เชื่อมต่อแล้ว</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Queries -->
+        <div class="glass-card p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">คำถามทั้งหมด</p>
+                    <p id="total-queries" class="text-2xl font-bold text-gray-900">0</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <i data-lucide="message-circle-question" class="w-6 h-6 text-purple-600"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <p class="text-xs text-gray-500">วันนี้: <span id="today-queries">0</span> คำถาม</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Information -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Current Configuration -->
+        <div class="glass-card p-6">
+            <h3 class="text-lg font-semibold mb-4 flex items-center">
+                <i data-lucide="settings" class="w-5 h-5 mr-2"></i>
+                การตั้งค่าปัจจุบัน
+            </h3>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-sm font-medium text-gray-600">Google Sheet ID:</span>
+                    <span id="current-sheet-id" class="text-sm text-gray-900 font-mono">-</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-sm font-medium text-gray-600">AI Model:</span>
+                    <span id="current-ai-model" class="text-sm text-gray-900">-</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-sm font-medium text-gray-600">System Uptime:</span>
+                    <span id="system-uptime" class="text-sm text-gray-900">-</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-sm font-medium text-gray-600">เวอร์ชัน:</span>
+                    <span class="text-sm text-gray-900">v1.0.0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="glass-card p-6">
+            <h3 class="text-lg font-semibold mb-4 flex items-center">
+                <i data-lucide="activity" class="w-5 h-5 mr-2"></i>
+                กิจกรรมล่าสุด
+            </h3>
+            <div id="recent-activity" class="space-y-3">
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium">ระบบเริ่มทำงาน</p>
+                        <p class="text-xs text-gray-500">เมื่อไม่กี่นาทีที่แล้ว</p>
+                    </div>
+                </div>
+                <!-- Activity items will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="glass-card p-6">
+        <h3 class="text-lg font-semibold mb-4 flex items-center">
+            <i data-lucide="zap" class="w-5 h-5 mr-2"></i>
+            การดำเนินการด่วน
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button onclick="window.location.href='/ai-config'" class="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <i data-lucide="brain" class="w-8 h-8 text-blue-600 mb-2"></i>
+                <span class="text-sm font-medium text-blue-900">ตั้งค่า AI</span>
+            </button>
+            <button onclick="window.location.href='/data-sources'" class="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                <i data-lucide="database" class="w-8 h-8 text-green-600 mb-2"></i>
+                <span class="text-sm font-medium text-green-900">จัดการข้อมูล</span>
+            </button>
+            <button onclick="window.location.href='/testing'" class="flex flex-col items-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+                <i data-lucide="flask-conical" class="w-8 h-8 text-orange-600 mb-2"></i>
+                <span class="text-sm font-medium text-orange-900">ทดสอบระบบ</span>
+            </button>
+            <button onclick="testConnection()" class="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                <i data-lucide="wifi" class="w-8 h-8 text-purple-600 mb-2"></i>
+                <span class="text-sm font-medium text-purple-900">ทดสอบการเชื่อมต่อ</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- System Health Chart -->
+    <div class="glass-card p-6">
+        <h3 class="text-lg font-semibold mb-4 flex items-center">
+            <i data-lucide="trending-up" class="w-5 h-5 mr-2"></i>
+            สถิติการใช้งาน
+        </h3>
+        <div class="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+            <div class="text-center">
+                <i data-lucide="bar-chart" class="w-12 h-12 text-gray-400 mx-auto mb-2"></i>
+                <p class="text-gray-500">กราฟแสดงสถิติการใช้งานจะอยู่ตรงนี้</p>
+                <p class="text-xs text-gray-400 mt-1">สามารถเพิ่ม Chart.js หรือ Library อื่นได้</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function refreshDashboard() {
+        showLoading();
+        fetchDashboardStats();
+    }
+
+    function fetchDashboardStats() {
+        fetch('/api/dashboard-stats', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateDashboard(data);
+            hideLoading();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideLoading();
+            showToast('เกิดข้อผิดพลาดในการโหลดข้อมูล Dashboard', 'error');
+        });
+    }
+
+    function updateDashboard(data) {
+        // Update system status
+        document.getElementById('system-status').textContent = data.system_status === 'online' ? 'ออนไลน์' : 'ออฟไลน์';
+        document.getElementById('last-update').textContent = new Date(data.last_update).toLocaleString('th-TH');
+        
+        // Update AI model info
+        document.getElementById('ai-model-name').textContent = data.ai_model || 'ไม่ทราบ';
+        document.getElementById('current-ai-model').textContent = data.ai_model || 'ไม่ทราบ';
+        
+        // Update AI status indicator
+        const aiStatusIcon = document.getElementById('ai-status-icon');
+        const aiStatusIndicator = document.getElementById('ai-status-indicator');
+        if (data.ai_model_status === 'connected') {
+            aiStatusIcon.className = 'w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center';
+            aiStatusIcon.querySelector('i').className = 'w-6 h-6 text-green-600';
+            aiStatusIndicator.innerHTML = '<div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div><span class="text-gray-500">เชื่อมต่อแล้ว</span>';
+        } else {
+            aiStatusIcon.className = 'w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center';
+            aiStatusIcon.querySelector('i').className = 'w-6 h-6 text-red-600';
+            aiStatusIndicator.innerHTML = '<div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div><span class="text-gray-500">ไม่สามารถเชื่อมต่อได้</span>';
+        }
+        
+        // Update Google Sheets info
+        document.getElementById('data-rows-count').textContent = data.data_rows + ' แถว' || '0 แถว';
+        document.getElementById('current-sheet-id').textContent = data.google_sheet_id || 'ไม่ได้ตั้งค่า';
+        
+        // Update Sheets status indicator
+        const sheetsStatusIcon = document.getElementById('sheets-status-icon');
+        const sheetsStatusIndicator = document.getElementById('sheets-status-indicator');
+        if (data.google_sheets_status === 'connected') {
+            sheetsStatusIcon.className = 'w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center';
+            sheetsStatusIcon.querySelector('i').className = 'w-6 h-6 text-green-600';
+            sheetsStatusIndicator.innerHTML = '<div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div><span class="text-gray-500">เชื่อมต่อแล้ว</span>';
+        } else {
+            sheetsStatusIcon.className = 'w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center';
+            sheetsStatusIcon.querySelector('i').className = 'w-6 h-6 text-red-600';
+            sheetsStatusIndicator.innerHTML = '<div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div><span class="text-gray-500">ไม่สามารถเชื่อมต่อได้</span>';
+        }
+        
+        // Update query stats
+        document.getElementById('total-queries').textContent = data.total_queries || '0';
+        document.getElementById('today-queries').textContent = '0'; // Can be implemented later
+        
+        // Update system info
+        document.getElementById('system-uptime').textContent = data.system_uptime || 'ไม่ทราบ';
+        
+        // Update recent activity
+        updateRecentActivity();
+    }
+
+    function updateRecentActivity() {
+        const recentActivity = document.getElementById('recent-activity');
+        // Add more activity items as needed
+        const activities = [
+            { 
+                message: 'Google Sheets เชื่อมต่อสำเร็จ', 
+                time: '5 นาทีที่แล้ว',
+                status: 'success'
+            },
+            { 
+                message: 'AI Model พร้อมใช้งาน', 
+                time: '10 นาทีที่แล้ว',
+                status: 'success'
+            },
+            { 
+                message: 'ระบบอัพเดทการตั้งค่า', 
+                time: '1 ชั่วโมงที่แล้ว',
+                status: 'info'
+            }
+        ];
+        
+        recentActivity.innerHTML = activities.map(activity => {
+            const statusColor = activity.status === 'success' ? 'green' : activity.status === 'error' ? 'red' : 'blue';
+            return `
+                <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div class="w-2 h-2 bg-${statusColor}-500 rounded-full"></div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium">${activity.message}</p>
+                        <p class="text-xs text-gray-500">${activity.time}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Initialize dashboard when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchDashboardStats();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(fetchDashboardStats, 30000);
+    });
+</script>
+{% endblock %}
