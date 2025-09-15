@@ -601,4 +601,175 @@
                 document.getElementById('custom-test-output').innerHTML = `
                     <div class="flex items-center text-red-600">
                         <i data-lucide="x-circle" class="w-4 h-4 mr-2"></i>
-                        <span class="font-medium">ทดสอบล้ม
+                        <span class="font-medium">ทดสอบล้มเหลว</span>
+                    </div>
+                    <div class="mt-3 text-sm text-gray-600">
+                        <p>ไม่สามารถประมวลผลคำถามได้</p>
+                        <p class="text-xs text-gray-500 mt-2">Response Time: ${responseTime}ms</p>
+                    </div>
+                `;
+                addTestToHistory('Custom Query', 'failed', responseTime);
+                addLog('error', `Custom test failed: "${query}"`);
+            }
+            
+            updateMetrics();
+            lucide.createIcons();
+        })
+        .catch(error => {
+            const responseTime = Date.now() - startTime;
+            testMetrics.totalTests++;
+            testMetrics.failedTests++;
+            testMetrics.responseTimes.push(responseTime);
+            
+            document.getElementById('custom-test-output').innerHTML = `
+                <div class="flex items-center text-red-600">
+                    <i data-lucide="alert-circle" class="w-4 h-4 mr-2"></i>
+                    <span class="font-medium">เกิดข้อผิดพลาด</span>
+                </div>
+                <div class="mt-3 text-sm text-gray-600">
+                    <p>${error.message}</p>
+                </div>
+            `;
+            addTestToHistory('Custom Query', 'error', responseTime);
+            addLog('error', `Custom test error: ${error.message}`);
+            updateMetrics();
+            lucide.createIcons();
+        });
+    }
+
+    function runFullTest() {
+        addLog('info', '=== Starting Full System Test ===');
+        updateStatusIcon('overall-test-status', 'overall-test-icon', 'loading', 'กำลังทดสอบ...');
+        
+        let completedTests = 0;
+        let passedTests = 0;
+        const totalSubTests = 2; // Google Sheets + AI Model
+        
+        function checkOverallStatus() {
+            if (completedTests === totalSubTests) {
+                const overallSuccess = passedTests === totalSubTests;
+                updateStatusIcon('overall-test-status', 'overall-test-icon', 
+                    overallSuccess ? 'success' : 'error', 
+                    overallSuccess ? 'ผ่านทั้งหมด' : `ผ่าน ${passedTests}/${totalSubTests}`);
+                addLog('info', `=== Full System Test Completed: ${passedTests}/${totalSubTests} passed ===`);
+            }
+        }
+        
+        // Test Google Sheets
+        fetch('/api/test-connection', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+        .then(response => response.json())
+        .then(data => {
+            completedTests++;
+            if (data.google_sheets) {
+                passedTests++;
+                updateStatusIcon('sheets-test-status', 'sheets-test-icon', 'success', 'ผ่าน');
+                addLog('info', 'Google Sheets test passed in full test');
+            } else {
+                updateStatusIcon('sheets-test-status', 'sheets-test-icon', 'error', 'ล้มเหลว');
+                addLog('error', 'Google Sheets test failed in full test');
+            }
+            checkOverallStatus();
+        })
+        .catch(error => {
+            completedTests++;
+            updateStatusIcon('sheets-test-status', 'sheets-test-icon', 'error', 'ข้อผิดพลาด');
+            addLog('error', `Google Sheets error in full test: ${error.message}`);
+            checkOverallStatus();
+        });
+        
+        // Test AI Model
+        fetch('/api/test-connection', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+        .then(response => response.json())
+        .then(data => {
+            completedTests++;
+            if (data.ai_model) {
+                passedTests++;
+                updateStatusIcon('ai-test-status', 'ai-test-icon', 'success', 'ผ่าน');
+                addLog('info', 'AI Model test passed in full test');
+            } else {
+                updateStatusIcon('ai-test-status', 'ai-test-icon', 'error', 'ล้มเหลว');
+                addLog('error', 'AI Model test failed in full test');
+            }
+            checkOverallStatus();
+        })
+        .catch(error => {
+            completedTests++;
+            updateStatusIcon('ai-test-status', 'ai-test-icon', 'error', 'ข้อผิดพลาด');
+            addLog('error', `AI Model error in full test: ${error.message}`);
+            checkOverallStatus();
+        });
+    }
+
+    function clearAllLogs() {
+        if (confirm('คุณต้องการล้างล็อกทั้งหมดหรือไม่?')) {
+            document.getElementById('system-logs').innerHTML = '<div class="text-gray-500">[INFO] Logs cleared</div>';
+            addLog('info', 'All logs cleared by user');
+        }
+    }
+
+    function refreshLogs() {
+        addLog('info', 'Logs refreshed manually');
+        showToast('รีเฟรชล็อกเรียบร้อย', 'success');
+    }
+
+    function exportLogs() {
+        const logs = document.getElementById('system-logs').textContent;
+        const blob = new Blob([logs], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `system-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('ส่งออกล็อกเรียบร้อย', 'success');
+    }
+
+    function resetDebugSettings() {
+        document.getElementById('verbose-logging').checked = false;
+        document.getElementById('show-raw-data').checked = false;
+        document.getElementById('measure-performance').checked = true;
+        document.getElementById('auto-retry').checked = false;
+        document.getElementById('test-timeout').value = 30;
+        document.getElementById('retry-attempts').value = 3;
+        showToast('รีเซ็ตการตั้งค่าเรียบร้อย', 'success');
+    }
+
+    function generateTestReport() {
+        const report = {
+            timestamp: new Date().toISOString(),
+            metrics: testMetrics,
+            settings: {
+                verboseLogging: document.getElementById('verbose-logging').checked,
+                showRawData: document.getElementById('show-raw-data').checked,
+                measurePerformance: document.getElementById('measure-performance').checked,
+                autoRetry: document.getElementById('auto-retry').checked,
+                testTimeout: document.getElementById('test-timeout').value,
+                retryAttempts: document.getElementById('retry-attempts').value
+            }
+        };
+        
+        const reportJson = JSON.stringify(report, null, 2);
+        const blob = new Blob([reportJson], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `test-report-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        addLog('info', 'Test report generated and downloaded');
+        showToast('สร้างรายงานการทดสอบเรียบร้อย', 'success');
+    }
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        addLog('info', 'Testing interface initialized');
+        addLog('debug', 'Debug mode enabled');
+        updateMetrics();
+    });
+</script>
+{% endblock %}
