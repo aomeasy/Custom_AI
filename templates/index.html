@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom AI powered by NT ONE AI</title>
+    <title>{% block title %}Custom AI powered by NT ONE AI{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -29,264 +29,114 @@
     </script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="stylesheet" href="/static/style.css">
+    {% block extra_head %}{% endblock %}
 </head>
 <body class="min-h-screen bg-gradient-to-br from-primary-50 via-amber-50 to-yellow-100">
-    <!-- Navigation -->
-    <nav class="bg-white/80 backdrop-blur-md border-b border-primary-200 sticky top-0 z-50">
-        <div class="container mx-auto px-4 py-3">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-r from-primary-400 to-yellow-500 rounded-xl flex items-center justify-center">
-                        <i data-lucide="bot" class="w-6 h-6 text-white"></i>
-                    </div>
-                    <h1 class="text-xl font-bold text-gray-800">Custom AI powered by NT ONE AI</h1>
+    <!-- Sidebar -->
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white/80 backdrop-blur-md border-r border-primary-200 transform -translate-x-full transition-transform lg:translate-x-0 lg:static lg:inset-0">
+        <div class="flex items-center justify-between p-4 border-b border-primary-200">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-gradient-to-r from-primary-400 to-yellow-500 rounded-lg flex items-center justify-center">
+                    <i data-lucide="bot" class="w-5 h-5 text-white"></i>
                 </div>
-                <div id="nav-menu" class="hidden md:flex items-center space-x-6">
-                    <button id="nav-home" class="nav-btn active" onclick="showPage('home')">
-                        <i data-lucide="home" class="w-4 h-4 mr-2"></i>หน้าหลัก
+                <h1 class="text-lg font-bold text-gray-800">Custom AI</h1>
+            </div>
+            <button id="sidebar-close" class="lg:hidden p-1 rounded-lg hover:bg-gray-100">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+        
+        <nav class="p-4">
+            <div class="space-y-2">
+                <!-- Main Menu -->
+                <div class="mb-6">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">หลัก</h3>
+                    <a href="/" class="sidebar-menu-item {% if request.endpoint == 'index' %}active{% endif %}">
+                        <i data-lucide="home" class="w-5 h-5"></i>
+                        <span>หน้าแรก</span>
+                    </a>
+                </div>
+
+                <!-- Settings Menu -->
+                <div class="mb-6">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">การตั้งค่า</h3>
+                    <a href="/dashboard" class="sidebar-menu-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/ai-config" class="sidebar-menu-item {% if request.endpoint == 'ai_config' %}active{% endif %}">
+                        <i data-lucide="brain" class="w-5 h-5"></i>
+                        <span>AI Configuration</span>
+                    </a>
+                    <a href="/data-sources" class="sidebar-menu-item {% if request.endpoint == 'data_sources' %}active{% endif %}">
+                        <i data-lucide="database" class="w-5 h-5"></i>
+                        <span>Data Sources</span>
+                    </a>
+                </div>
+
+                <!-- Tools Menu -->
+                <div class="mb-6">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">เครื่องมือ</h3>
+                    <a href="/testing" class="sidebar-menu-item {% if request.endpoint == 'testing' %}active{% endif %}">
+                        <i data-lucide="flask-conical" class="w-5 h-5"></i>
+                        <span>Testing & Debug</span>
+                    </a>
+                    <button onclick="testConnection()" class="sidebar-menu-item">
+                        <i data-lucide="wifi" class="w-5 h-5"></i>
+                        <span>Connection Test</span>
                     </button>
-                    <button id="nav-chat" class="nav-btn" onclick="showPage('chat')">
-                        <i data-lucide="message-circle" class="w-4 h-4 mr-2"></i>Chat
-                    </button>
-                    <button id="nav-settings" class="nav-btn" onclick="showPage('settings')">
-                        <i data-lucide="settings" class="w-4 h-4 mr-2"></i>Settings
-                    </button>
-                    <button id="logout-btn" class="nav-btn" onclick="logout()" style="display: none;">
-                        <i data-lucide="log-out" class="w-4 h-4 mr-2"></i>ออกจากระบบ
+                </div>
+
+                <!-- System Menu -->
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">ระบบ</h3>
+                    <button onclick="logout()" class="sidebar-menu-item text-red-600 hover:bg-red-50">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                        <span>ออกจากระบบ</span>
                     </button>
                 </div>
             </div>
-        </div>
-    </nav>
+        </nav>
+    </div>
 
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-6">
-        <!-- Login Page -->
-        <div id="login-page" class="page active">
-            <div class="max-w-md mx-auto">
-                <div class="glass-card p-8 text-center">
-                    <div class="w-20 h-20 bg-gradient-to-r from-primary-400 to-yellow-500 rounded-full mx-auto mb-6 flex items-center justify-center">
-                        <i data-lucide="key" class="w-10 h-10 text-white"></i>
-                    </div>
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800">เข้าสู่ระบบ</h2>
-                    <form id="login-form" class="space-y-4">
-                        <div>
-                            <input type="text" id="username" placeholder="ชื่อผู้ใช้" required
-                                   class="w-full px-4 py-3 border border-primary-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white/90">
-                        </div>
-                        <div>
-                            <input type="password" id="password" placeholder="รหัสผ่าน" required
-                                   class="w-full px-4 py-3 border border-primary-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white/90">
-                        </div>
-                        <button type="submit" class="w-full bg-gradient-to-r from-primary-500 to-yellow-500 text-white py-3 px-6 rounded-xl hover:shadow-lg transition-all">
-                            เข้าสู่ระบบ
+    <!-- Main Layout -->
+    <div class="lg:ml-64">
+        <!-- Top Navigation -->
+        <nav class="bg-white/80 backdrop-blur-md border-b border-primary-200 sticky top-0 z-40">
+            <div class="px-4 py-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <button id="sidebar-toggle" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                            <i data-lucide="menu" class="w-5 h-5"></i>
                         </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Home Page -->
-        <div id="home-page" class="page">
-            <div class="max-w-4xl mx-auto">
-                <div class="text-center mb-8">
-                    <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-primary-600 to-yellow-600 bg-clip-text text-transparent">
-                        Custom AI powered by NT ONE AI
-                    </h1>
-                    <p class="text-xl text-gray-600">ระบบ AI Chatbot ที่ช่วยค้นหาข้อมูลจาก Google Sheets</p>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-6 mb-8">
-                    <div class="glass-card p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-xl flex items-center justify-center mr-4">
-                                <i data-lucide="message-circle" class="w-6 h-6 text-white"></i>
+                        <div class="lg:hidden flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-gradient-to-r from-primary-400 to-yellow-500 rounded-lg flex items-center justify-center">
+                                <i data-lucide="bot" class="w-5 h-5 text-white"></i>
                             </div>
-                            <h3 class="text-xl font-semibold">AI Chatbot</h3>
+                            <h1 class="text-lg font-bold text-gray-800">Custom AI</h1>
                         </div>
-                        <p class="text-gray-600 mb-4">ใช้เทคนิค RAG ในการค้นหาข้อมูลจาก Google Sheets และตอบคำถามอย่างชาญฉลาด</p>
-                        <button onclick="showPage('chat')" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors">
-                            เริ่มแชท
-                        </button>
+                        <div class="hidden lg:block">
+                            <h1 class="text-xl font-bold text-gray-800">{% block page_title %}Custom AI powered by NT ONE AI{% endblock %}</h1>
+                        </div>
                     </div>
-
-                    <div class="glass-card p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-r from-green-400 to-teal-500 rounded-xl flex items-center justify-center mr-4">
-                                <i data-lucide="settings" class="w-6 h-6 text-white"></i>
-                            </div>
-                            <h3 class="text-xl font-semibold">การตั้งค่า</h3>
-                        </div>
-                        <p class="text-gray-600 mb-4">กำหนด System Prompt, Google Sheet ID, และการเชื่อมต่อ API ต่างๆ</p>
-                        <button onclick="showPage('settings')" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors">
-                            ตั้งค่า
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Feature Guide -->
-                <div class="glass-card p-6">
-                    <h3 class="text-2xl font-bold mb-6 text-center">คู่มือการใช้งาน</h3>
-                    <div class="grid md:grid-cols-3 gap-6">
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-gradient-to-r from-primary-400 to-yellow-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                                <span class="text-2xl font-bold text-white">1</span>
-                            </div>
-                            <h4 class="font-semibold mb-2">เข้าสู่ระบบ</h4>
-                            <p class="text-sm text-gray-600">ใช้ Username และ Password ที่กำหนดไว้ใน Google Sheet</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-gradient-to-r from-primary-400 to-yellow-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                                <span class="text-2xl font-bold text-white">2</span>
-                            </div>
-                            <h4 class="font-semibold mb-2">ตั้งค่าระบบ</h4>
-                            <p class="text-sm text-gray-600">กำหนด Google Sheet ID และ System Prompt สำหรับ AI</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-gradient-to-r from-primary-400 to-yellow-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                                <span class="text-2xl font-bold text-white">3</span>
-                            </div>
-                            <h4 class="font-semibold mb-2">เริ่มใช้งาน</h4>
-                            <p class="text-sm text-gray-600">สนทนากับ AI เพื่อค้นหาข้อมูลจาก Google Sheets</p>
+                    <div class="flex items-center space-x-4">
+                        <div id="connection-indicator" class="flex items-center space-x-2 text-sm">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span class="text-gray-600">ออนไลน์</span>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </nav>
 
-        <!-- Chat Page -->
-        <div id="chat-page" class="page">
-            <div class="max-w-6xl mx-auto">
-                <div class="grid lg:grid-cols-3 gap-6">
-                    <!-- Main Chat -->
-                    <div class="lg:col-span-2">
-                        <div class="glass-card h-[600px] flex flex-col">
-                            <div class="p-4 border-b border-primary-200">
-                                <h3 class="text-xl font-semibold flex items-center">
-                                    <i data-lucide="message-circle" class="w-5 h-5 mr-2"></i>
-                                    AI Chatbot
-                                </h3>
-                            </div>
-                            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto">
-                                <div class="chat-message bot">
-                                    <div class="flex items-start space-x-3">
-                                        <div class="w-8 h-8 bg-gradient-to-r from-primary-400 to-yellow-500 rounded-full flex items-center justify-center">
-                                            <i data-lucide="bot" class="w-4 h-4 text-white"></i>
-                                        </div>
-                                        <div class="bg-white/90 rounded-lg p-3 max-w-md">
-                                            <p>สวัสดีครับ! ฉันพร้อมช่วยคุณค้นหาข้อมูลจาก Google Sheets ได้เลย</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="p-4 border-t border-primary-200">
-                                <form id="chat-form" class="flex space-x-2">
-                                    <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..."
-                                           class="flex-1 px-4 py-2 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
-                                    <button type="submit" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors">
-                                        <i data-lucide="send" class="w-4 h-4"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Main Content -->
+        <main class="p-4 lg:p-6">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
 
-                    <!-- Admin Helper -->
-                    <div class="lg:col-span-1">
-                        <div class="glass-card h-[600px] flex flex-col">
-                            <div class="p-4 border-b border-primary-200">
-                                <h3 class="text-lg font-semibold flex items-center">
-                                    <i data-lucide="help-circle" class="w-5 h-5 mr-2"></i>
-                                    Admin Helper
-                                </h3>
-                            </div>
-                            <div id="admin-messages" class="flex-1 p-4 overflow-y-auto">
-                                <div class="chat-message bot">
-                                    <div class="flex items-start space-x-2">
-                                        <div class="w-6 h-6 bg-gradient-to-r from-green-400 to-teal-500 rounded-full flex items-center justify-center">
-                                            <i data-lucide="help-circle" class="w-3 h-3 text-white"></i>
-                                        </div>
-                                        <div class="bg-green-50 rounded-lg p-3 text-sm max-w-xs">
-                                            <p>สวัสดี! ฉันเป็น Admin Helper พร้อมช่วยเหลือคุณในการใช้งาน พิมพ์ "ช่วย" เพื่อดูคำสั่งที่ใช้ได้</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="p-4 border-t border-primary-200">
-                                <form id="admin-form" class="flex space-x-2">
-                                    <input type="text" id="admin-input" placeholder="ถามผู้ช่วย..."
-                                           class="flex-1 px-3 py-2 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
-                                    <button type="submit" class="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors">
-                                        <i data-lucide="send" class="w-3 h-3"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Settings Page -->
-        <div id="settings-page" class="page">
-            <div class="max-w-4xl mx-auto">
-                <div class="glass-card p-6">
-                    <h2 class="text-2xl font-bold mb-6 flex items-center">
-                        <i data-lucide="settings" class="w-6 h-6 mr-2"></i>
-                        การตั้งค่าระบบ
-                    </h2>
-                    
-                    <form id="settings-form" class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-medium mb-2">System Prompt</label>
-                            <textarea id="system-prompt" rows="4" 
-                                      class="w-full px-4 py-3 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                      placeholder="กำหนดวิธีการทำงานของ AI..."></textarea>
-                        </div>
-
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Google Sheet ID</label>
-                                <input type="text" id="google-sheet-id"
-                                       class="w-full px-4 py-3 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                       placeholder="1_YcWW9AWew9afLVk08Tl5lN4iQMhxiQDz4qU3LsB-iE">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Line Token</label>
-                                <input type="text" id="line-token"
-                                       class="w-full px-4 py-3 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                       placeholder="Line Channel Access Token">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium mb-2">Telegram API</label>
-                            <input type="text" id="telegram-api"
-                                   class="w-full px-4 py-3 border border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                   placeholder="Telegram Bot Token">
-                        </div>
-
-                        <div class="flex space-x-4">
-                            <button type="submit" class="bg-primary-500 text-white px-6 py-3 rounded-lg hover:bg-primary-600 transition-colors">
-                                บันทึกการตั้งค่า
-                            </button>
-                            <button type="button" id="test-connection" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors">
-                                ทดสอบการเชื่อมต่อ
-                            </button>
-                        </div>
-                    </form>
-
-                    <div id="connection-status" class="mt-6 p-4 rounded-lg hidden">
-                        <h4 class="font-semibold mb-2">สถานะการเชื่อมต่อ:</h4>
-                        <div class="space-y-2 text-sm">
-                            <div id="sheets-status">Google Sheets: <span class="loading">กำลังทดสอบ...</span></div>
-                            <div id="ai-status">AI Model: <span class="loading">กำลังทดสอบ...</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
+    <!-- Mobile Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden hidden"></div>
 
     <!-- Loading Overlay -->
     <div id="loading" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
@@ -306,15 +156,114 @@
         </div>
     </div>
 
-    <script src="/static/script.js"></script>
+    <!-- Base Scripts -->
     <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
-        
-        // Initialize app
+        // Sidebar functionality
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function logout() {
+            if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
+                fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '/';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        }
+
+        function testConnection() {
+            showLoading();
+            fetch('/api/test-connection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                showToast(data.message, data.google_sheets && data.ai_model ? 'success' : 'error');
+            })
+            .catch(error => {
+                hideLoading();
+                showToast('เกิดข้อผิดพลาดในการทดสอบการเชื่อมต่อ', 'error');
+            });
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const messageEl = document.getElementById('toast-message');
+            
+            messageEl.textContent = message;
+            
+            if (type === 'success') {
+                icon.className = 'w-6 h-6 bg-green-500 rounded-full flex items-center justify-center';
+                icon.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-white"></i>';
+            } else {
+                icon.className = 'w-6 h-6 bg-red-500 rounded-full flex items-center justify-center';
+                icon.innerHTML = '<i data-lucide="x" class="w-4 h-4 text-white"></i>';
+            }
+            
+            toast.classList.remove('translate-x-full');
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        // Initialize sidebar functionality
         document.addEventListener('DOMContentLoaded', function() {
-            initApp();
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebarClose = document.getElementById('sidebar-close');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            
+            if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+            if (sidebarClose) sidebarClose.addEventListener('click', toggleSidebar);
+            if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
+            
+            // Initialize Lucide icons
+            lucide.createIcons();
         });
     </script>
+
+    {% block extra_scripts %}{% endblock %}
+
+    <style>
+        .sidebar-menu-item {
+            @apply w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors no-underline;
+        }
+        
+        .sidebar-menu-item.active {
+            @apply bg-primary-100 text-primary-800 font-medium;
+        }
+        
+        .sidebar-menu-item i {
+            @apply flex-shrink-0;
+        }
+        
+        .glass-card {
+            @apply bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg;
+        }
+    </style>
 </body>
 </html>
