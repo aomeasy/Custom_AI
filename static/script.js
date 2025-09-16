@@ -90,7 +90,38 @@ function updateNavigation(activePageId) {
     if (activeBtn) {
         activeBtn.classList.add('active');
     }
+    // Show/hide sidebar based on login status
+    const sidebar = document.getElementById('sidebar');
+    const mainLayout = document.querySelector('.lg\\:ml-64'); // Main content with margin
     
+    if (activePageId === 'login') {
+        // Hide sidebar on login page
+        sidebar.style.display = 'none';
+        if (mainLayout) {
+            mainLayout.style.marginLeft = '0';
+        }
+    } else {
+        // Show sidebar on other pages
+        sidebar.style.display = 'block';
+        if (mainLayout) {
+            mainLayout.style.marginLeft = '';
+        }
+    }
+    
+    // Show/hide logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    const navMenu = document.getElementById('nav-menu');
+    
+    if (isLoggedIn && activePageId !== 'login') {
+        logoutBtn.style.display = 'flex';
+        navMenu.classList.remove('hidden');
+        navMenu.classList.add('flex');
+    } else {
+        logoutBtn.style.display = 'none';
+        navMenu.classList.add('hidden');
+        navMenu.classList.remove('flex');
+    }
+}
     // Show/hide logout button
     const logoutBtn = document.getElementById('logout-btn');
     const navMenu = document.getElementById('nav-menu');
